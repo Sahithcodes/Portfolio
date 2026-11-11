@@ -1,0 +1,536 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ========================================================================== 
+   THEME DESIGN SYSTEM — CHARCOAL, IVORY & TEAL WITH WARM SIGNAL ACCENTS
+   ========================================================================== */
+
+:root {
+  /* 60% grounding neutrals: verdant charcoal, layered rather than flat black. */
+  --background: #0B1110;
+  --background-rgb: 11, 17, 16;
+  --surface: #121B19;
+  --surface-rgb: 18, 27, 25;
+  --surface-elevated: #1A2622;
+  --surface-elevated-rgb: 26, 38, 34;
+  --foreground: #F3F0E7;
+  --foreground-rgb: 243, 240, 231;
+  --secondary: #B6C2B8;
+  --muted: #849188;
+  --border: #2B3934;
+  --border-rgb: 43, 57, 52;
+
+  /* 30% information hierarchy, led by teal; other hues stay editorial accents. */
+  --primary: #22B8AA;
+  --primary-rgb: 34, 184, 170;
+  --primary-hover: #55CABB;
+  --primary-soft: #A7DED5;
+  --teal-deep: #087F78;
+  --teal-deep-rgb: 8, 127, 120;
+  --teal-secondary: #22B8AA;
+  --teal-secondary-rgb: 34, 184, 170;
+  --amber: #E69A55;
+  --amber-rgb: 230, 154, 85;
+  --terracotta: #D97862;
+  --terracotta-rgb: 217, 120, 98;
+  --sage: #A9B9AA;
+  --sage-rgb: 169, 185, 170;
+
+  /* Accent area is intentionally small: state, metrics, and scene detail. */
+  --accent-subtle: rgba(34, 184, 170, 0.09);
+  --accent-glow: rgba(34, 184, 170, 0.16);
+  --page-wash: radial-gradient(ellipse at 76% 18%, rgba(230, 154, 85, 0.028), transparent 30%), radial-gradient(ellipse at 50% -12%, rgba(34, 184, 170, 0.05), transparent 48%);
+  --shadow-soft: 0 18px 44px -28px rgba(0, 0, 0, 0.76);
+  --ambient-teal: rgba(34, 184, 170, 0.18);
+  --ambient-warm: rgba(230, 154, 85, 0.075);
+
+  /* Button System (Dark Theme) */
+  --btn-primary-bg: #22B8AA;
+  --btn-primary-text: #0B1110;
+  --btn-primary-border: #22B8AA;
+  --btn-primary-hover-bg: #55CABB;
+  --btn-primary-hover-border: #55CABB;
+  --btn-primary-glow: 0 0 22px -4px rgba(34, 184, 170, 0.34);
+
+  --btn-secondary-bg: #121B19;
+  --btn-secondary-text: #F3F0E7;
+  --btn-secondary-border: #2B3934;
+  --btn-secondary-hover-bg: rgba(34, 184, 170, 0.09);
+  --btn-secondary-hover-border: #22B8AA;
+
+  --btn-outline-bg: transparent;
+  --btn-outline-text: #F3F0E7;
+  --btn-outline-border: #2B3934;
+  --btn-outline-hover-bg: rgba(34, 184, 170, 0.09);
+  --btn-outline-hover-border: #22B8AA;
+}
+
+[data-theme="light"],
+html.light {
+  /* Cool editorial whites with deep teal details and crisp charcoal type. */
+  --background: #F3F7F7;
+  --background-rgb: 243, 247, 247;
+  --surface: #FFFFFF;
+  --surface-rgb: 255, 255, 255;
+  --surface-elevated: #E7F0F0;
+  --surface-elevated-rgb: 231, 240, 240;
+  --primary: #066D67;
+  --primary-rgb: 6, 109, 103;
+  --primary-hover: #055750;
+  --primary-soft: #287D77;
+  --foreground: #182624;
+  --foreground-rgb: 24, 38, 36;
+  --secondary: #455B58;
+  --muted: #536A67;
+  --border: #C4D5D4;
+  --border-rgb: 196, 213, 212;
+  --teal-deep: #066D67;
+  --teal-deep-rgb: 6, 109, 103;
+  --teal-secondary: #167B73;
+  --teal-secondary-rgb: 22, 123, 115;
+  --amber: #167B73;
+  --amber-rgb: 22, 123, 115;
+  --terracotta: #0B5D59;
+  --terracotta-rgb: 11, 93, 89;
+  --sage: #3F7772;
+  --sage-rgb: 63, 119, 114;
+  --accent-subtle: rgba(6, 109, 103, 0.08);
+  --accent-glow: rgba(6, 109, 103, 0.16);
+  --page-wash: radial-gradient(ellipse at 78% 18%, rgba(40, 125, 119, 0.055), transparent 32%), radial-gradient(ellipse at 26% 54%, rgba(76, 154, 151, 0.04), transparent 42%), linear-gradient(180deg, #F8FBFB 0%, #F1F6F6 100%);
+  --shadow-soft: 0 22px 52px -32px rgba(14, 51, 48, 0.26);
+  --ambient-teal: rgba(22, 123, 115, 0.13);
+  --ambient-warm: rgba(22, 123, 115, 0.055);
+
+  /* Button System (Light Theme) */
+  --btn-primary-bg: #066D67;
+  --btn-primary-text: #FFFFFF;
+  --btn-primary-border: #066D67;
+  --btn-primary-hover-bg: #055750;
+  --btn-primary-hover-border: #055750;
+  --btn-primary-glow: 0 7px 22px -5px rgba(6, 109, 103, 0.3);
+
+  --btn-secondary-bg: #FFFFFF;
+  --btn-secondary-text: #182624;
+  --btn-secondary-border: #C4D5D4;
+  --btn-secondary-hover-bg: #E7F0F0;
+  --btn-secondary-hover-border: #066D67;
+
+  --btn-outline-bg: transparent;
+  --btn-outline-text: #182624;
+  --btn-outline-border: #C4D5D4;
+  --btn-outline-hover-bg: #E7F0F0;
+  --btn-outline-hover-border: #066D67;
+}
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  html {
+    color-scheme: dark;
+    scroll-behavior: smooth;
+    background-color: var(--background);
+    background-image: var(--page-wash);
+  }
+
+  html.light {
+    color-scheme: light;
+  }
+
+  body {
+    background-color: var(--background);
+    background-image: var(--page-wash);
+    color: var(--foreground);
+    font-family: var(--font-inter), system-ui, -apple-system, sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  ::selection {
+    background: var(--accent-glow);
+    color: var(--foreground);
+  }
+
+  /* Accessible focus rings */
+  :focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 3px;
+    border-radius: 4px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, ::before, ::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+/* Subtle dark/light custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--background);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--surface-elevated);
+  border-radius: 4px;
+  border: 1px solid var(--border);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--border);
+}
+
+/* Restrained accent glow utility */
+.glow-teal-subtle {
+  box-shadow: 0 0 35px -5px var(--accent-glow);
+}
+
+.text-gradient-teal {
+  background: linear-gradient(135deg, var(--foreground) 20%, var(--primary-soft) 60%, var(--primary) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.text-gradient-teal-soft {
+  background: linear-gradient(135deg, var(--foreground) 30%, var(--primary-soft) 75%, var(--primary) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Light theme art direction: cool paper, teal atmosphere, and a few deep stages.
+   These selectors are deliberately theme-gated so dark mode remains unchanged. */
+html.light body {
+  background-color: #F3F7F7;
+  background-image:
+    radial-gradient(ellipse at 77% 10%, rgba(42, 130, 124, 0.075), transparent 31%),
+    radial-gradient(ellipse at 18% 58%, rgba(82, 151, 149, 0.045), transparent 38%),
+    linear-gradient(180deg, #F8FBFB 0%, #F0F5F5 100%);
+}
+
+html.light #hero {
+  isolation: isolate;
+  background: linear-gradient(180deg, rgba(255,255,255,0.72) 0%, rgba(247,251,251,0.56) 72%, rgba(234,243,242,0.68) 100%);
+}
+
+html.light #hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image:
+    radial-gradient(circle at 76% 42%, rgba(27, 139, 131, 0.13), transparent 23%),
+    radial-gradient(circle at 12% 78%, rgba(67, 148, 144, 0.065), transparent 27%),
+    linear-gradient(rgba(22, 123, 115, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(22, 123, 115, 0.035) 1px, transparent 1px);
+  background-size: auto, auto, 76px 76px, 76px 76px;
+  mask-image: linear-gradient(90deg, transparent 0%, #000 24%, #000 88%, transparent 100%);
+}
+
+html.light .cinematic-statement {
+  isolation: isolate;
+  background:
+    radial-gradient(ellipse at 50% 46%, rgba(255,255,255,0.78) 0%, rgba(247,251,251,0.73) 53%, rgba(229,240,239,0.76) 100%);
+}
+
+html.light .cinematic-statement::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.52;
+  background-image:
+    radial-gradient(circle at 50% 50%, transparent 0 18%, rgba(12, 108, 103, 0.08) 18.1% 18.2%, transparent 18.3% 30%, rgba(12, 108, 103, 0.055) 30.1% 30.2%, transparent 30.3%),
+    radial-gradient(ellipse at 50% 50%, rgba(31, 133, 126, 0.085), transparent 58%);
+}
+
+html.light .cinematic-statement .statement-copy {
+  position: relative;
+  z-index: 1;
+  text-wrap: balance;
+}
+
+html.light .cinematic-statement .statement-copy p {
+  font-size: clamp(2.65rem, 7.4vw, 7rem);
+  line-height: 0.98;
+  letter-spacing: -0.035em;
+}
+
+html.light .cinematic-statement .statement-copy p:nth-child(1),
+html.light .cinematic-statement .statement-copy p:nth-child(2) {
+  color: #172321;
+}
+
+html.light .cinematic-statement .statement-copy p:nth-child(3) {
+  color: #066D67;
+}
+
+html.light #about {
+  isolation: isolate;
+  background: linear-gradient(180deg, rgba(255,255,255,0.82), rgba(244,249,248,0.86));
+}
+
+html.light #about::before,
+html.light #skills::before,
+html.light #experience::before,
+html.light #achievements::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.52;
+  background-image: radial-gradient(ellipse at 85% 24%, rgba(26, 122, 117, 0.09), transparent 32%), linear-gradient(135deg, transparent 48%, rgba(23, 111, 106, 0.035) 48.1%, transparent 48.35%);
+}
+
+html.light #skills > *,
+html.light #experience > *,
+html.light #achievements > * {
+  position: relative;
+  z-index: 1;
+}
+
+html.light #about > div:not([aria-hidden]) {
+  position: relative;
+  z-index: 1;
+}
+
+html.light .about-narrative-panel {
+  --foreground: #F5FBFA;
+  --foreground-rgb: 245, 251, 250;
+  --secondary: #D3E8E6;
+  --muted: #B7D2D0;
+  --primary: #7DDBD3;
+  --primary-rgb: 125, 219, 211;
+  --accent-subtle: rgba(147, 231, 224, 0.12);
+  position: relative;
+  padding: clamp(1.5rem, 3vw, 2.6rem);
+  border: 1px solid rgba(143, 209, 204, 0.24);
+  border-radius: 1.5rem;
+  background: linear-gradient(145deg, #0C514D 0%, #0B625D 62%, #0B514E 100%);
+  box-shadow: 0 26px 70px -42px rgba(0, 63, 59, 0.65);
+}
+
+html.light .about-narrative-panel::after {
+  content: "";
+  position: absolute;
+  right: 1.4rem;
+  top: 1.4rem;
+  width: 5.5rem;
+  height: 5.5rem;
+  opacity: 0.3;
+  pointer-events: none;
+  background-image: radial-gradient(rgba(153, 231, 225, 0.8) 1px, transparent 1.5px);
+  background-size: 10px 10px;
+  mask-image: linear-gradient(135deg, #000, transparent 75%);
+}
+
+html.light .about-focus-card {
+  box-shadow: 0 16px 40px -32px rgba(12, 64, 61, 0.35);
+}
+
+html.light .about-focus-card:nth-child(1) {
+  --foreground: #F5FBFA;
+  --foreground-rgb: 245, 251, 250;
+  --secondary: #D3E8E6;
+  --muted: #B7D2D0;
+  --surface-rgb: 12, 81, 77;
+  --surface-elevated-rgb: 24, 102, 97;
+  --border-rgb: 62, 133, 128;
+  --primary: #7DDBD3;
+  --primary-rgb: 125, 219, 211;
+  --accent-subtle: rgba(147, 231, 224, 0.12);
+  background: linear-gradient(145deg, #0C514D, #0B625D);
+  border-color: #347D78;
+}
+
+html.light .about-focus-card:nth-child(2) {
+  background: #FFFFFF;
+  border-color: #C4D5D4;
+}
+
+html.light .about-focus-card:nth-child(3) {
+  background: linear-gradient(135deg, #EDF5F4, #E3EFEE);
+  border-color: #C1D7D5;
+}
+
+html.light #skills {
+  isolation: isolate;
+  background: linear-gradient(180deg, rgba(230, 240, 239, 0.82), rgba(243, 247, 247, 0.85));
+}
+
+html.light #skills > .mx-auto > .grid > div {
+  background-color: rgba(255, 255, 255, 0.89);
+  border-color: #C7D9D8;
+  box-shadow: 0 22px 52px -42px rgba(15, 73, 69, 0.42);
+}
+
+html.light #skills > .mx-auto > .grid > div:nth-child(even) {
+  background: linear-gradient(140deg, rgba(244, 249, 248, 0.96), rgba(230, 241, 240, 0.96));
+}
+
+html.light .focus-studio {
+  --foreground: #F3FAF9;
+  --foreground-rgb: 243, 250, 249;
+  --secondary: #C8E0DE;
+  --muted: #A9CCCA;
+  --background: #0B3D3B;
+  --background-rgb: 11, 61, 59;
+  --surface: #104C49;
+  --surface-rgb: 16, 76, 73;
+  --surface-elevated: #175D59;
+  --surface-elevated-rgb: 23, 93, 89;
+  --border: #347873;
+  --border-rgb: 52, 120, 115;
+  --primary: #85DED6;
+  --primary-rgb: 133, 222, 214;
+  --accent-glow: rgba(115, 220, 212, 0.2);
+  isolation: isolate;
+  background:
+    radial-gradient(ellipse at 78% 48%, rgba(40, 144, 137, 0.28), transparent 38%),
+    linear-gradient(115deg, #0B3D3B 0%, #104F4B 52%, #0A3A39 100%);
+}
+
+html.light .focus-studio::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.4;
+  background-image: radial-gradient(rgba(167, 226, 221, 0.6) 1px, transparent 1.5px);
+  background-size: 34px 34px;
+  mask-image: linear-gradient(90deg, transparent, #000 28%, #000 90%, transparent);
+}
+
+html.light .focus-studio > .mx-auto {
+  position: relative;
+  z-index: 1;
+}
+
+html.light #projects {
+  background: linear-gradient(180deg, rgba(247, 250, 250, 0.82), rgba(231, 241, 240, 0.86));
+}
+
+html.light #projects .project-inner,
+html.light #projects .lg\:hidden > div > .flex > div {
+  box-shadow: 0 24px 64px -46px rgba(11, 73, 69, 0.4);
+}
+
+html.light #projects .project-visual-preview {
+  background: linear-gradient(135deg, #E8F1F0, #F7FAFA);
+}
+
+html.light #experience {
+  isolation: isolate;
+  background: linear-gradient(180deg, rgba(242, 247, 247, 0.82), rgba(255,255,255,0.86));
+}
+
+html.light #experience .timeline-card {
+  background: rgba(255,255,255,0.93);
+  border-color: #C8D9D8;
+  box-shadow: 0 18px 48px -38px rgba(12, 74, 69, 0.42);
+}
+
+html.light #experience .group:nth-of-type(4) .timeline-card {
+  background: linear-gradient(125deg, #EAF3F2, #F8FBFB);
+}
+
+html.light #achievements {
+  isolation: isolate;
+  background: linear-gradient(180deg, rgba(232, 241, 240, 0.82), rgba(244, 248, 248, 0.86));
+}
+
+html.light #achievements .group:hover {
+  background: rgba(6, 109, 103, 0.075);
+}
+
+html.light #contact {
+  --foreground: #F3FAF9;
+  --foreground-rgb: 243, 250, 249;
+  --secondary: #C9E0DE;
+  --muted: #A9CCCA;
+  --primary: #8AE0D8;
+  --primary-rgb: 138, 224, 216;
+  --border: #347873;
+  --border-rgb: 52, 120, 115;
+  isolation: isolate;
+  background:
+    radial-gradient(ellipse at 82% 22%, rgba(46, 146, 139, 0.26), transparent 35%),
+    linear-gradient(125deg, #0A3736 0%, #0D514D 56%, #0A3B39 100%);
+}
+
+html.light #contact .contact-panel {
+  --foreground: #182624;
+  --foreground-rgb: 24, 38, 36;
+  --secondary: #455B58;
+  --muted: #536A67;
+  --primary: #066D67;
+  --primary-rgb: 6, 109, 103;
+  --surface-rgb: 255, 255, 255;
+  --surface-elevated-rgb: 231, 240, 240;
+  --border-rgb: 196, 213, 212;
+  background: rgba(255,255,255,0.97);
+  border-color: rgba(193, 220, 217, 0.8);
+  box-shadow: 0 24px 70px -44px rgba(0, 39, 37, 0.7);
+}
+
+html.light #footer {
+  --foreground: #F3FAF9;
+  --foreground-rgb: 243, 250, 249;
+  --secondary: #C5DDDB;
+  --muted: #A5C6C3;
+  --primary: #8AE0D8;
+  --primary-rgb: 138, 224, 216;
+  --surface-rgb: 9, 48, 47;
+  --border-rgb: 55, 104, 100;
+  background: linear-gradient(135deg, #092F2E, #0B4542 62%, #082E2E);
+  border-color: rgba(91, 152, 147, 0.45);
+}
+
+/* ==========================================================================
+   ORGANIC INK BLEED THEME TRANSITION OVERLAY (WebGL2 + Fallback)
+   ========================================================================== */
+
+.ink-canvas {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 99999;
+  pointer-events: none;
+  visibility: hidden;
+  opacity: 0;
+}
+
+.ink-canvas.is-active {
+  visibility: visible;
+}
+
+/* CSS fallback transition when WebGL2 is not available or reduced-motion is preferred */
+html.theme-fade,
+html.theme-fade *,
+html.theme-fade *::before,
+html.theme-fade *::after {
+  transition:
+    background-color var(--theme-fade, 0.45s) ease,
+    border-color var(--theme-fade, 0.45s) ease,
+    color var(--theme-fade, 0.45s) ease,
+    fill var(--theme-fade, 0.45s) ease,
+    stroke var(--theme-fade, 0.45s) ease,
+    box-shadow var(--theme-fade, 0.45s) ease !important;
+}
+

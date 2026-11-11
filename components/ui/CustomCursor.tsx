@@ -1,0 +1,129 @@
+"use client";
+
+import React, { useEffect, useRef } from "react";
+
+export default function CustomCursor() {
+  const ringRef = useRef<HTMLDivElement | null>(null);
+  const dotRef = useRef<HTMLDivElement | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    // Only enable on non-touch devices with fine pointer and no reduced motion
+    const hasFinePointer = window.matchMedia("(pointer: fine)").matches;
+    const prefersReducedMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)"
+    ).matches;
+
+    if (!hasFinePointer || prefersReducedMotion) {
+      return;
+    }
+
+    const container = containerRef.current;
+    const ring = ringRef.current;
+    const dot = dotRef.current;
+    if (!container || !ring || !dot) return;
+
+    let targetX = -100;
+    let targetY = -100;
+    let currentX = -100;
+    let currentY = -100;
+    let isVisible = false;
+    let isHovered = false;
+    let animationFrameId: number;
+
+    const onMouseMove = (e: MouseEvent) => {
+      targetX = e.clientX;
+      targetY = e.clientY;
+
+      if (!isVisible) {
+        isVisible = true;
+        container.style.opacity = "1";
+      }
+
+      // Update dot directly without lag
+      dot.style.transform = `translate3d(${targetX}px, ${targetY}px, 0) translate(-50%, -50%)`;
+    };
+
+    const onMouseLeave = () => {
+      isVisible = false;
+      container.style.opacity = "0";
+    };
+
+    const onMouseOver = (e: MouseEvent) => {
+      const target = e.target as HTMLElement | null;
+      const interactive =
+        target?.closest("a") ||
+        target?.closest("button") ||
+        target?.closest("[role='button']") ||
+        target?.closest("input") ||
+        target?.closest("textarea") ||
+        target?.closest(".project-card");
+
+      const nextHovered = Boolean(interactive);
+      if (nextHovered !== isHovered) {
+        isHovered = nextHovered;
+        if (isHovered) {
+          ring.style.width = "48px";
+          ring.style.height = "48px";
+          ring.style.borderColor = "var(--primary)";
+          ring.style.backgroundColor = "var(--accent-subtle)";
+        } else {
+          ring.style.width = "28px";
+          ring.style.height = "28px";
+          ring.style.borderColor = "var(--border)";
+          ring.style.backgroundColor = "transparent";
+        }
+      }
+    };
+
+    // Smooth trailing ring loop using direct DOM writes (Zero React state updates)
+    const ease = 0.2;
+    const tick = () => {
+      if (isVisible) {
+        currentX += (targetX - currentX) * ease;
+        currentY += (targetY - currentY) * ease;
+        ring.style.transform = `translate3d(${currentX}px, ${currentY}px, 0) translate(-50%, -50%)`;
+      }
+      animationFrameId = requestAnimationFrame(tick);
+    };
+
+    window.addEventListener("mousemove", onMouseMove, { passive: true });
+    window.addEventListener("mouseover", onMouseOver, { passive: true });
+    document.addEventListener("mouseleave", onMouseLeave);
+    animationFrameId = requestAnimationFrame(tick);
+
+    return () => {
+      window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("mouseover", onMouseOver);
+      document.removeEventListener("mouseleave", onMouseLeave);
+      cancelAnimationFrame(animationFrameId);
+    };
+  }, []);
+
+  return (
+    <div
+      ref={containerRef}
+      className="pointer-events-none fixed inset-0 z-[9999] opacity-0 transition-opacity duration-300"
+      aria-hidden="true"
+    >
+      {/* Outer trailing ring */}
+      <div
+        ref={ringRef}
+        className="fixed top-0 left-0 rounded-full border border-surface-border transition-[width,height,border-color,background-color] duration-150 ease-out"
+        style={{
+          width: "28px",
+          height: "28px",
+          willChange: "transform",
+        }}
+      />
+      {/* Center dot */}
+      <div
+        ref={dotRef}
+        className="fixed top-0 left-0 w-1.5 h-1.5 rounded-full bg-accent shadow-[0_0_8px_var(--accent-glow)]"
+        style={{
+          willChange: "transform",
+        }}
+      />
+    </div>
+  );
+}
