@@ -77,11 +77,14 @@ export default function ContactSection() {
       if (!response.ok) throw new Error(result.message || "The message could not be sent. Please try again.");
       setStatus("success");
       setFormData({ name: "", email: "", subject: "", message: "" });
-      setCaptchaToken("");
-      if (captchaWidget.current) window.turnstile?.reset(captchaWidget.current);
     } catch (error) {
       setStatus("error");
       setFormMessage(error instanceof Error ? error.message : "The message could not be sent. Please try again.");
+    } finally {
+      // Turnstile tokens are single-use, including when server verification or
+      // email delivery fails. Reset the mounted widget for the next attempt.
+      setCaptchaToken("");
+      if (captchaWidget.current) window.turnstile?.reset(captchaWidget.current);
     }
   };
 
@@ -156,7 +159,7 @@ export default function ContactSection() {
           {/* Form Foundation */}
           <div className="lg:col-span-7">
             <div className="contact-panel p-7 sm:p-9 rounded-2xl bg-surface border border-surface-border hover:border-accent/40 transition-colors">
-              {status === "success" ? (
+              {status === "success" && (
                 <div className="py-12 flex flex-col items-center text-center space-y-3.5">
                   <CheckCircle2 className="w-14 h-14 text-accent animate-bounce" />
                   <h3 className="font-heading text-2xl font-bold text-content-primary">
@@ -181,10 +184,11 @@ export default function ContactSection() {
                     Send Another
                   </Button>
                 </div>
-              ) : (
+              )}
                 <form
                   onSubmit={handleSubmit}
                   className="space-y-4"
+                  hidden={status === "success"}
                 >
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
@@ -296,7 +300,6 @@ export default function ContactSection() {
                     {status === "loading" ? "Sending…" : "Transmit Message"}
                   </Button>
                 </form>
-              )}
             </div>
           </div>
         </div>
