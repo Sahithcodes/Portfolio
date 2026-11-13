@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { gsap } from "@/lib/animations/gsap";
-import { MOTION_CONFIG } from "@/lib/animations/motionConfig";
 
 type SceneState = { opacity: number; particleMorph: number; intensity: number; cameraProgress: number };
 
@@ -17,7 +16,6 @@ attribute float aStarType;
 attribute float aTwinkle;
 uniform float uMorph;
 uniform float uVelocity;
-uniform float uStructure;
 uniform float uCamera;
 uniform float uTime;
 uniform vec2 uMouse;
@@ -32,19 +30,17 @@ varying float vCore;
 varying vec3 vCoreColor;
 varying float vStarShape;
 varying float vTwinkle;
-varying float vLine;
+varying float vDepth;
 void main() {
   float d = clamp(uMorph, 0.0, 1.0);
   float aspect = uResolution.x / max(1.0, uResolution.y);
   float mobile = 1.0 - step(0.72, aspect);
   vec3 p = mix(aPosition, aTarget, d);
-  p += vec3(
-    sin(uTime * 0.20 + aPosition.y * 3.0),
-    cos(uTime * 0.17 + aPosition.x * 3.0),
-    sin(uTime * 0.16 + aPosition.z * 4.0)
-  ) * 0.006;
-  float yaw = uTime * 0.055 + uCamera * 0.10 + uMouse.x * 0.16 * uInteractive + uVelocity * 0.025;
-  float pitch = sin(uTime * 0.13) * 0.035 - uMouse.y * 0.11 * uInteractive;
+  float particlePhase = uTime * (0.34 + aTwinkle * 0.18) + aTwinkle * 6.28318;
+  p += vec3(sin(particlePhase), cos(particlePhase * 0.87), sin(particlePhase * 0.71))
+    * (0.0014 + aTwinkle * 0.0011 + uVelocity * 0.0005);
+  float yaw = uTime * 0.009 + uCamera * 0.025 + uVelocity * 0.003;
+  float pitch = sin(uTime * 0.08) * 0.012;
   float cy = cos(yaw), sy = sin(yaw);
   p.xz = mat2(cy, -sy, sy, cy) * p.xz;
   float cx = cos(pitch), sx = sin(pitch);
@@ -60,27 +56,30 @@ void main() {
   vec2 sculpturePosition = p.xy * perspective;
   vec2 scenePosition = sculpturePosition;
 
-  // A small local push gives the pointer a tangible effect without deforming
-  // the complete sculpture or its morphed formations.
+  // Local repulsion and a faint ripple leave the rest of the portrait anchored.
   vec2 mouseDelta = scenePosition - uMouse;
-  float mouseFalloff = 1.0 - smoothstep(0.015, 0.20, length(mouseDelta));
-  scenePosition += normalize(mouseDelta + vec2(0.00001)) * mouseFalloff * 0.045 * uInteractive * uPointerActive;
+  float mouseDistance = length(mouseDelta);
+  float mouseFalloff = 1.0 - smoothstep(0.008, 0.095, mouseDistance);
+  float ripple = sin(mouseDistance * 92.0 - uTime * 2.2) * exp(-mouseDistance * 26.0) * 0.0025;
+  float repulsion = mouseFalloff * 0.017 + ripple;
+  scenePosition += normalize(mouseDelta + vec2(0.00001, 0.0)) * repulsion * uInteractive * uPointerActive;
   gl_Position = vec4(scenePosition, -p.z * 0.18, 1.0);
-  gl_PointSize = mix(aSize, aStarSize, d) * (1.0 + p.z * 0.22);
+  gl_PointSize = mix(aSize, aStarSize, d) * (1.0 + p.z * 0.22) * mix(1.0, 1.45, uLightTheme);
   vColor = mix(aColor, aLightColor, uLightTheme);
-  vCore = smoothstep(2.0, 6.0, aSize);
+  vDepth = clamp(0.84 + p.z * 0.32, 0.62, 1.08);
+  vCore = smoothstep(2.0, 3.6, aSize);
   vCoreColor = mix(vec3(0.72, 1.0, 0.98), vec3(0.025, 0.25, 0.24), uLightTheme);
   vStarShape = aStarType;
   vTwinkle = aTwinkle;
-  vLine = 1.0 - step(0.5, aSize);
-  float mobileAlpha = mix(0.56, 0.34, mobile);
-  float lightAlpha = mix(1.05, 0.68, mobile);
+  float mobileAlpha = mix(0.92, 0.78, mobile);
+  float lightAlpha = mix(1.0, 0.88, mobile);
   mobileAlpha = mix(mobileAlpha, lightAlpha, uLightTheme);
-  float themeAlpha = mix(1.0, 1.4, uLightTheme);
-  float twinkle = 0.68 + 0.32 * sin(uTime * (1.2 + aTwinkle * 2.4) + aPosition.x * 41.0 + aPosition.y * 29.0);
-  float structureAlpha = (0.76 + 0.12 * sin(uTime * 0.5 + aPosition.x * 8.0 + aPosition.z * 5.0));
+  float themeAlpha = mix(1.0, 1.75, uLightTheme);
+  float twinkle = 0.78 + 0.22 * sin(uTime * (0.55 + aTwinkle * 0.5) + aTwinkle * 6.28318);
+  float structureAlpha = (0.88 + 0.07 * sin(uTime * 0.28 + aTwinkle * 6.28318));
   float starAlpha = mix(1.0, twinkle, d * (0.3 + aTwinkle * 0.7));
-  vAlpha = mix(structureAlpha, starAlpha, d) * uOpacity * mobileAlpha * themeAlpha * mix(1.0, uStructure, vLine);
+  float particleVisibility = 0.86 + aTwinkle * 0.08 + vCore * 0.12;
+  vAlpha = mix(structureAlpha, starAlpha, d) * uOpacity * mobileAlpha * themeAlpha * particleVisibility;
 }`;
 
 const fragmentShader = `
@@ -91,7 +90,7 @@ varying float vCore;
 varying vec3 vCoreColor;
 varying float vStarShape;
 varying float vTwinkle;
-varying float vLine;
+varying float vDepth;
 void main() {
   vec2 uv = gl_PointCoord * 2.0 - 1.0;
   float r = length(uv);
@@ -103,11 +102,13 @@ void main() {
   float diamond = 1.0 - smoothstep(0.68, 1.0, abs(uv.x) + abs(uv.y));
   float starMask = mix(circle, diamond, smoothstep(0.78, 0.84, vStarShape));
   starMask = mix(starMask, max(starMask, crossRay), smoothstep(0.95, 0.99, vStarShape));
-  float mask = mix(circle, starMask, 1.0 - vLine);
+  float mask = starMask;
   float core = (1.0 - smoothstep(0.0, 0.72, r)) * vCore;
-  float alpha = mask * vAlpha * (0.66 + core * 0.34);
+  float baseAlpha = mask * vAlpha * vDepth * (0.66 + core * 0.34);
+  float halo = exp(-r * r * 4.2) * vCore * vAlpha * 0.18;
+  float alpha = 1.0 - (1.0 - baseAlpha) * (1.0 - halo);
   if (alpha < 0.025) discard;
-  gl_FragColor = vec4(mix(vColor, vCoreColor, core * 0.22), alpha);
+  gl_FragColor = vec4(mix(vColor * vDepth, vCoreColor, core * 0.38 + halo * 0.45), alpha);
 }`;
 
 function randomFactory(seed: number) {
@@ -118,13 +119,84 @@ function randomFactory(seed: number) {
   };
 }
 
+async function loadPortraitSamples(): Promise<Float32Array> {
+  const image = new Image();
+  image.src = "/images/portrait-cutout-v2.png";
+  await image.decode();
+
+  const canvas = document.createElement("canvas");
+  canvas.width = 234;
+  canvas.height = 338;
+  const context = canvas.getContext("2d", { willReadFrequently: true });
+  if (!context) throw new Error("Could not sample portrait image");
+  // Keep the head, neck and shoulders in frame while dropping the phone and
+  // lower torso, which gives facial detail more room in the hero composition.
+  context.drawImage(image, 0, 0, image.naturalWidth, image.naturalHeight * 0.70, 0, 0, canvas.width, canvas.height);
+  const { data } = context.getImageData(0, 0, canvas.width, canvas.height);
+
+  let minX = canvas.width, minY = canvas.height, maxX = 0, maxY = 0;
+  for (let y = 0; y < canvas.height; y++) {
+    for (let x = 0; x < canvas.width; x++) {
+      if (data[(y * canvas.width + x) * 4 + 3] > 32) {
+        minX = Math.min(minX, x); minY = Math.min(minY, y);
+        maxX = Math.max(maxX, x); maxY = Math.max(maxY, y);
+      }
+    }
+  }
+  const subjectWidth = maxX - minX + 1;
+  const subjectHeight = maxY - minY + 1;
+  const subjectAspect = subjectWidth / subjectHeight;
+
+  const samples: number[] = [];
+  for (let y = 0; y < canvas.height; y += 2) {
+    for (let x = 0; x < canvas.width; x += 2) {
+      const k = (y * canvas.width + x) * 4;
+      const r = data[k], g = data[k + 1], b = data[k + 2];
+      if (data[k + 3] < 48) continue;
+      const normalizedX = (x - minX) / Math.max(1, subjectWidth - 1);
+      const normalizedY = (y - minY) / Math.max(1, subjectHeight - 1);
+      const right = (y * canvas.width + Math.min(canvas.width - 1, x + 2)) * 4;
+      const below = (Math.min(canvas.height - 1, y + 2) * canvas.width + x) * 4;
+      const edge = Math.min(1, (
+        Math.abs(r - data[right]) + Math.abs(g - data[right + 1]) + Math.abs(b - data[right + 2]) +
+        Math.abs(r - data[below]) + Math.abs(g - data[below + 1]) + Math.abs(b - data[below + 2])
+      ) / 900);
+      // The sampling image is cropped to 70% height, so these normalized
+      // regions cover the complete face through the chin and jaw.
+      const faceRegion = normalizedY > 0.15 && normalizedY < 0.72 && normalizedX > 0.20 && normalizedX < 0.80;
+      const facialCore = normalizedY > 0.20 && normalizedY < 0.59 && normalizedX > 0.30 && normalizedX < 0.74;
+      const importance = Math.min(1, (facialCore ? 0.48 : faceRegion ? 0.28 : 0.04) + edge * 2.45);
+      const sample = [
+        (normalizedX - 0.5) * 1.5 * subjectAspect,
+        (0.5 - normalizedY) * 1.5,
+        ((r + g + b) / 765 - 0.5) * 0.08,
+        r / 255,
+        g / 255,
+        b / 255,
+        importance,
+        edge,
+      ];
+      samples.push(...sample);
+      // Bias stable sampling toward the face and high-contrast details such as
+      // eyes, brows, nostrils and lips without disturbing the actual silhouette.
+      if (faceRegion) samples.push(...sample);
+      if (facialCore) { samples.push(...sample); samples.push(...sample); }
+      if (faceRegion && edge > 0.10) samples.push(...sample);
+      if (faceRegion && edge > 0.22) samples.push(...sample);
+      else if (edge > 0.18) samples.push(...sample);
+    }
+  }
+  if (samples.length < 600) throw new Error("Portrait mask did not contain enough person detail");
+  return new Float32Array(samples);
+}
+
 const DARK_PALETTE = [
-  [0.133, 0.722, 0.667], // teal
-  [0.384, 0.835, 0.773], // secondary teal
-  [0.843, 0.91, 0.859], // a few pale signal points
-  [0.184, 0.604, 0.588], // blue-green
-  [0.357, 0.78, 0.749], // turquoise highlight
-  [0.663, 0.725, 0.667], // sage
+  [0.10, 0.56, 0.52], // deep teal
+  [0.20, 0.76, 0.69], // turquoise
+  [0.24, 0.78, 0.82], // restrained cyan
+  [0.12, 0.55, 0.59], // blue-green
+  [0.33, 0.83, 0.78], // selected turquoise highlight
+  [0.30, 0.58, 0.60], // muted petrol
 ];
 const LIGHT_PALETTE = [
   [0.024, 0.427, 0.404], // deep teal
@@ -136,136 +208,60 @@ const LIGHT_PALETTE = [
 ];
 
 type Vec3 = [number, number, number];
-const cross = (a: Vec3, b: Vec3): Vec3 => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
-const normalize = (a: Vec3): Vec3 => {
-  const length = Math.hypot(a[0], a[1], a[2]) || 1;
-  return [a[0] / length, a[1] / length, a[2] / length];
-};
 
-/** Five phase-shifted trefoil ribbons braid around one shared central volume. */
-function ribbonCenter(ribbon: number, t: number): Vec3 {
-  const theta = t * Math.PI * 2;
-  const phase = (ribbon / 5) * Math.PI * 2;
-  const minor = theta * 3 + phase;
-  const major = theta * 2 + phase * 0.42;
-  const radius = 0.29 + 0.095 * Math.cos(minor);
-  const point: Vec3 = [
-    radius * Math.cos(major),
-    radius * Math.sin(major),
-    0.17 * Math.sin(minor) + 0.035 * Math.sin(theta + phase),
-  ];
-
-  // Slightly tilt each loop around the core to build a deep, braided silhouette.
-  const tilt = (ribbon - 2) * 0.12;
-  const cy = Math.cos(tilt), sy = Math.sin(tilt);
-  return [point[0], point[1] * cy - point[2] * sy, point[1] * sy + point[2] * cy];
-}
-
-function ribbonPoint(ribbon: number, t: number, across: number): Vec3 {
-  const center = ribbonCenter(ribbon, t);
-  const before = ribbonCenter(ribbon, t - 0.001);
-  const after = ribbonCenter(ribbon, t + 0.001);
-  const tangent = normalize([after[0] - before[0], after[1] - before[1], after[2] - before[2]]);
-  const radial = normalize(center);
-  const side = normalize(cross(tangent, radial));
-  const width = 0.043 * across;
-  const lifted = 0.009 * (1 - across * across);
-  return [
-    (center[0] + side[0] * width + radial[0] * lifted) * 1.16,
-    (center[1] + side[1] * width + radial[1] * lifted) * 1.16,
-    (center[2] + side[2] * width + radial[2] * lifted) * 1.16,
-  ];
-}
-
-function makeGeometry(count: number) {
+function makeGeometry(count: number, portrait: Float32Array) {
   const random = randomFactory(491_027);
+  const sampleCount = portrait.length / 8;
   const positions = new Float32Array(count * 3);
   const colors = new Float32Array(count * 3);
   const lightColors = new Float32Array(count * 3);
-  const scatter = new Float32Array(count * 3);
   const sizes = new Float32Array(count);
   const starSizes = new Float32Array(count);
   const starTypes = new Float32Array(count);
   const twinkles = new Float32Array(count);
-  const ribbonCount = 5;
-  const acrossCount = 15;
-  const perRibbon = Math.ceil(count / ribbonCount);
-  const alongCount = Math.ceil(perRibbon / acrossCount);
-
   for (let i = 0; i < count; i++) {
-    const ribbon = Math.floor(i / perRibbon);
-    const withinRibbon = i % perRibbon;
-    const row = withinRibbon % acrossCount;
-    const column = Math.floor(withinRibbon / acrossCount);
-    const across = ((row / (acrossCount - 1)) * 2 - 1) * (0.9 + random() * 0.1);
-    const t = (column + random() * 0.42) / alongCount;
-    const point = ribbonPoint(ribbon, t, across);
-    const jitter = 0.0018 + random() * 0.0032;
+    const sampleIndex = (Math.floor((i * sampleCount) / count) * 8) % portrait.length;
+    const importance = portrait[sampleIndex + 6];
+    const edge = portrait[sampleIndex + 7];
+    const jitter = 0.0007 + random() * 0.0015;
     const a = random() * Math.PI * 2;
     const index = i * 3;
-    positions[index] = point[0] + Math.cos(a) * jitter;
-    positions[index + 1] = point[1] + Math.sin(a) * jitter;
-    positions[index + 2] = point[2] + (random() - 0.5) * jitter * 1.7;
-    // Stable screen-wide destinations make reverse scroll reconstruct the ribbons.
-    scatter[index] = random() * 1.92 - 0.96;
-    scatter[index + 1] = random() * 1.84 - 0.92;
-    scatter[index + 2] = random() * 1.2 - 0.6;
-
+    positions[index] = portrait[sampleIndex] + Math.cos(a) * jitter;
+    positions[index + 1] = portrait[sampleIndex + 1] + Math.sin(a) * jitter;
+    positions[index + 2] = portrait[sampleIndex + 2] + (random() - 0.5) * jitter * 1.7;
     const colorRoll = random();
-    // Teal and turquoise traces dominate, with a few pale signal points.
-    const colorIndex = colorRoll < 0.60 ? 0 : colorRoll < 0.87 ? 1 : colorRoll < 0.94 ? 2 : colorRoll < 0.975 ? 3 : colorRoll < 0.985 ? 4 : 5;
+    const colorIndex = colorRoll < 0.34 ? 0 : colorRoll < 0.67 ? 1 : colorRoll < 0.80 ? 2 : colorRoll < 0.91 ? 3 : colorRoll < 0.975 ? 4 : 5;
+    const sourceR = portrait[sampleIndex + 3];
+    const sourceG = portrait[sampleIndex + 4];
+    const sourceB = portrait[sampleIndex + 5];
     const color = DARK_PALETTE[colorIndex];
     const lightColor = LIGHT_PALETTE[colorIndex];
-    const brightness = 0.68 + random() * 0.38;
-    colors[index] = Math.min(1, color[0] * brightness);
-    colors[index + 1] = Math.min(1, color[1] * brightness);
-    colors[index + 2] = Math.min(1, color[2] * brightness);
-    lightColors[index] = Math.min(1, lightColor[0] * brightness);
-    lightColors[index + 1] = Math.min(1, lightColor[1] * brightness);
-    lightColors[index + 2] = Math.min(1, lightColor[2] * brightness);
-    sizes[i] = random() < 0.024 ? 3.1 + random() * 1.5 : 1.25 + random() * 0.85;
-    starSizes[i] = random() < 0.035 ? 4.0 + random() * 3.0 : 1.1 + random() * 1.45;
+    const sourceLuminance = (sourceR * 0.2126 + sourceG * 0.7152 + sourceB * 0.0722);
+    // Keep dark hair and eye detail dark while allowing the brighter skin and
+    // high contrast edges to read clearly as a face in the particle portrait.
+    const brightness = 0.42 + sourceLuminance * 0.82 + importance * 0.14 + edge * 0.72;
+    const tealMix = 0.40 + importance * 0.18;
+    colors[index] = Math.min(1, (sourceR * (1 - tealMix) + color[0] * tealMix) * brightness);
+    colors[index + 1] = Math.min(1, (sourceG * (1 - tealMix) + color[1] * tealMix) * brightness);
+    colors[index + 2] = Math.min(1, (sourceB * (1 - tealMix) + color[2] * tealMix) * brightness);
+    const lightBrightness = 0.84 + edge * 0.34 + importance * 0.10 + (1 - sourceLuminance) * 0.16;
+    lightColors[index] = Math.min(0.72, lightColor[0] * lightBrightness);
+    lightColors[index + 1] = Math.min(0.72, lightColor[1] * lightBrightness);
+    lightColors[index + 2] = Math.min(0.72, lightColor[2] * lightBrightness);
+    sizes[i] = (random() < 0.02 ? 2.8 + random() * 0.6 : 1.5 + random() * 0.65) + importance * 0.55 + edge * 1.7;
+    starSizes[i] = sizes[i] * (1 + random() * 0.14);
     starTypes[i] = random();
     twinkles[i] = random();
-  }
-
-  // Fine longitudinal filaments trace each ribbon. Sparse cross-lines describe
-  // the woven surface without turning the sculpture into a network graph.
-  const linePositions: number[] = [];
-  const lineColors: number[] = [];
-  const lineLightColors: number[] = [];
-  const addLine = (a: Vec3, b: Vec3, weight: number, color: number[]) => {
-    linePositions.push(...a, ...b);
-    lineColors.push(color[0] * weight, color[1] * weight, color[2] * weight, color[0] * weight, color[1] * weight, color[2] * weight);
-    const light = [0.024, 0.427, 0.404];
-    const lightWeight = Math.min(1, 0.65 + weight * 1.5);
-    lineLightColors.push(light[0] * lightWeight, light[1] * lightWeight, light[2] * lightWeight, light[0] * lightWeight, light[1] * lightWeight, light[2] * lightWeight);
-  };
-  const samples = 220;
-  for (let ribbon = 0; ribbon < ribbonCount; ribbon++) {
-    for (const across of [-0.92, 0, 0.92]) {
-      const weight = across === 0 ? 0.16 : 0.23;
-      for (let step = 0; step < samples; step++) {
-        addLine(ribbonPoint(ribbon, step / samples, across), ribbonPoint(ribbon, (step + 1) / samples, across), weight, [0.133, 0.722, 0.667]);
-      }
-    }
-    for (let step = 0; step < samples; step += 22) {
-      addLine(ribbonPoint(ribbon, step / samples, -0.92), ribbonPoint(ribbon, step / samples, 0.92), 0.07, [0.22, 0.78, 0.72]);
-    }
   }
 
   return {
     positions,
     colors,
     lightColors,
-    scatter,
     sizes,
     starSizes,
     starTypes,
     twinkles,
-    linePositions: new Float32Array(linePositions),
-    lineColors: new Float32Array(lineColors),
-    lineLightColors: new Float32Array(lineLightColors),
   };
 }
 
@@ -276,6 +272,28 @@ function makeFormations(count: number, base: Float32Array): Float32Array[] {
   const text = new Float32Array(count * 3);
   const random = randomFactory(20261111);
   const sampledText: Vec3[] = [];
+  const nodes: Vec3[] = [];
+  for (let i = 0; i < 18; i++) {
+    const y = 1 - 2 * ((i + 0.5) / 18);
+    const angle = i * 2.399963229728653;
+    const radius = Math.sqrt(Math.max(0, 1 - y * y));
+    nodes.push([radius * Math.cos(angle) * 0.60, y * 0.58, radius * Math.sin(angle) * 0.42]);
+  }
+  nodes.push([0, 0.02, 0]);
+  const edges: Array<[number, number]> = [];
+  const edgeKeys = new Set<string>();
+  for (let node = 0; node < 18; node++) {
+    const nearest = nodes.slice(0, 18).map((point, other) => ({
+      other,
+      distance: Math.hypot(point[0] - nodes[node][0], point[1] - nodes[node][1], point[2] - nodes[node][2]),
+    })).filter(({ other }) => other !== node).sort((a, b) => a.distance - b.distance).slice(0, 3);
+    for (const { other } of nearest) {
+      const low = Math.min(node, other), high = Math.max(node, other);
+      const key = `${low}:${high}`;
+      if (!edgeKeys.has(key)) { edgeKeys.add(key); edges.push([low, high]); }
+    }
+    if (node % 3 === 0) edges.push([node, 18]);
+  }
   if (typeof document !== "undefined") {
     const canvas = document.createElement("canvas");
     canvas.width = 1024; canvas.height = 280;
@@ -295,12 +313,13 @@ function makeFormations(count: number, base: Float32Array): Float32Array[] {
   }
   for (let i = 0; i < count; i++) {
     const k = i * 3;
-    const y = 1 - 2 * ((i + 0.5) / count);
-    const angle = i * 2.399963229728653;
-    const radius = Math.sqrt(Math.max(0, 1 - y * y));
-    network[k] = radius * Math.cos(angle) * 0.67;
-    network[k + 1] = y * 0.67;
-    network[k + 2] = radius * Math.sin(angle) * 0.48;
+    const edge = edges[i % edges.length];
+    const from = nodes[edge[0]], to = nodes[edge[1]];
+    const edgeLayer = Math.floor(i / edges.length);
+    const t = (edgeLayer + 0.5 + (random() - 0.5) * 0.18) / Math.ceil(count / edges.length);
+    network[k] = from[0] + (to[0] - from[0]) * t + (random() - 0.5) * 0.012;
+    network[k + 1] = from[1] + (to[1] - from[1]) * t + (random() - 0.5) * 0.012;
+    network[k + 2] = from[2] + (to[2] - from[2]) * t + (random() - 0.5) * 0.012;
 
     const gx = (i % 80) / 79 - 0.5;
     const gy = (Math.floor(i / 80) % 80) / 79 - 0.5;
@@ -338,7 +357,7 @@ function compile(gl: WebGLRenderingContext, type: number, source: string) {
   return shader;
 }
 
-function drawFallback(canvas: HTMLCanvasElement) {
+function drawFallback(canvas: HTMLCanvasElement, particles: ReturnType<typeof makeGeometry>, pointer = { x: 0, y: 0, active: false }) {
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
   const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
@@ -350,30 +369,23 @@ function drawFallback(canvas: HTMLCanvasElement) {
   ctx.clearRect(0, 0, width, height);
   const light = document.documentElement.dataset.theme === "light";
   const centerX = width * (width < height ? 0.5 : 0.80);
-  const centerY = height * (width < height ? 0.76 : 0.5);
-  const scale = Math.min(width, height) * (width < height ? 0.62 : 0.46);
-  ctx.lineWidth = Math.max(0.7, scale * 0.002);
-  ctx.strokeStyle = light ? "rgba(6,109,103,.14)" : "rgba(34,184,170,.17)";
-  for (let ribbon = 0; ribbon < 5; ribbon++) {
-    for (const across of [-0.92, 0, 0.92]) {
-      ctx.beginPath();
-      for (let step = 0; step <= 180; step++) {
-        const p = ribbonPoint(ribbon, step / 180, across);
-        const x = centerX + p[0] * scale;
-        const y = centerY - p[1] * scale;
-        if (!step) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-      }
-      ctx.stroke();
-    }
-  }
-  const particles = makeGeometry(width < 768 ? 700 : 1400);
+  const centerY = height * (width < height ? 0.62 : 0.5);
+  const scale = Math.min(width, height) * (width < height ? 0.58 : 0.46);
+  const pointerX = (pointer.x + 1) * width * 0.5;
+  const pointerY = (1 - pointer.y) * height * 0.5;
   for (let i = 0; i < particles.sizes.length; i++) {
     const k = i * 3;
-    const x = centerX + particles.positions[k] * scale;
-    const y = centerY - particles.positions[k + 1] * scale;
+    let x = centerX + particles.positions[k] * scale;
+    let y = centerY - particles.positions[k + 1] * scale;
+    if (pointer.active) {
+      const dx = x - pointerX, dy = y - pointerY;
+      const distance = Math.hypot(dx, dy);
+      const force = (1 - Math.min(1, distance / 92)) ** 2 * 18;
+      if (distance > 0.01) { x += (dx / distance) * force; y += (dy / distance) * force; }
+    }
     const palette = light ? particles.lightColors : particles.colors;
     const color = `${Math.round(palette[k] * 255)},${Math.round(palette[k + 1] * 255)},${Math.round(palette[k + 2] * 255)}`;
-    const opacity = (particles.sizes[i] > 4 ? 0.82 : 0.56) * (light ? 0.82 : 1);
+    const opacity = (particles.sizes[i] > 3 ? 0.94 : 0.76) * (light ? 0.94 : 1);
     ctx.fillStyle = `rgba(${color},${opacity})`;
     ctx.beginPath();
     ctx.arc(x, y, Math.max(0.75, particles.sizes[i] * 0.55), 0, Math.PI * 2);
@@ -381,18 +393,33 @@ function drawFallback(canvas: HTMLCanvasElement) {
   }
 }
 
-/** Persistent GPU signal sculpture, replacing the former anatomical point cloud. */
+/** One persistent GPU particle system morphs the photo into later scroll formations. */
 export default function SignalSculpture({ state, reducedMotion }: { state: SceneState; reducedMotion: boolean }) {
   const webglCanvas = useRef<HTMLCanvasElement>(null);
   const fallbackCanvas = useRef<HTMLCanvasElement>(null);
   const root = useRef<HTMLDivElement>(null);
   const mouse = useRef({ x: 0, y: 0 });
+  const pointerIsActive = useRef(false);
+  const [portraitSamples, setPortraitSamples] = useState<Float32Array | null>(null);
+  const fallbackGeometry = useMemo(() => {
+    if (!portraitSamples?.length) return null;
+    const lowPower = typeof window !== "undefined" && window.innerWidth < 768;
+    return makeGeometry(lowPower ? 700 : 1400, portraitSamples);
+  }, [portraitSamples]);
+
+  useEffect(() => {
+    let cancelled = false;
+    loadPortraitSamples()
+      .then((samples) => { if (!cancelled) setPortraitSamples(samples); })
+      .catch(() => { if (!cancelled) setPortraitSamples(new Float32Array()); });
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     const canvas = webglCanvas.current;
     const fallback = fallbackCanvas.current;
-    if (!canvas || !fallback) return;
-    drawFallback(fallback);
+    if (!canvas || !fallback || !portraitSamples?.length || !fallbackGeometry) return;
+    drawFallback(fallback, fallbackGeometry);
 
     let gl: WebGLRenderingContext | null = null;
     let program: WebGLProgram | null = null;
@@ -402,6 +429,7 @@ export default function SignalSculpture({ state, reducedMotion }: { state: Scene
     let disposed = false;
     let lastFrame = 0;
     let smoothMouse = { x: 0, y: 0 };
+    let pointerInfluence = 0;
       let pointerActive = false;
     const started = performance.now();
 
@@ -428,12 +456,10 @@ export default function SignalSculpture({ state, reducedMotion }: { state: Scene
       }
 
       const lowPower = window.innerWidth < 768 || (navigator as Navigator & { deviceMemory?: number }).deviceMemory === 2;
-      const geometry = makeGeometry(lowPower ? 2200 : 9000);
+      const geometry = makeGeometry(lowPower ? 2200 : 9000, portraitSamples);
       const formations = makeFormations(geometry.sizes.length, geometry.positions);
-      let currentBase = new Float32Array(geometry.positions);
       let activeStage = 0;
-      let currentTarget = formations[0];
-      let transitionStarted = performance.now();
+      let activeTargetStage = Math.min(1, formations.length - 1);
       const attribute = {
         position: gl.getAttribLocation(program, "aPosition"),
         color: gl.getAttribLocation(program, "aColor"),
@@ -447,7 +473,6 @@ export default function SignalSculpture({ state, reducedMotion }: { state: Scene
       const uniform = {
         morph: gl.getUniformLocation(program, "uMorph"),
         velocity: gl.getUniformLocation(program, "uVelocity"),
-        structure: gl.getUniformLocation(program, "uStructure"),
         camera: gl.getUniformLocation(program, "uCamera"),
         time: gl.getUniformLocation(program, "uTime"),
         mouse: gl.getUniformLocation(program, "uMouse"),
@@ -470,8 +495,7 @@ export default function SignalSculpture({ state, reducedMotion }: { state: Scene
         starType: gl.createBuffer(),
         twinkle: gl.createBuffer(),
       };
-      const lineBuffers = { position: gl.createBuffer(), color: gl.createBuffer(), lightColor: gl.createBuffer() };
-      [...Object.values(pointBuffers), ...Object.values(lineBuffers)].forEach((buffer) => {
+      Object.values(pointBuffers).forEach((buffer) => {
         if (!buffer) throw new Error("Could not create sculpture buffer");
         buffers.push(buffer);
       });
@@ -479,17 +503,14 @@ export default function SignalSculpture({ state, reducedMotion }: { state: Scene
         gl!.bindBuffer(gl!.ARRAY_BUFFER, buffer);
         gl!.bufferData(gl!.ARRAY_BUFFER, data, gl!.STATIC_DRAW);
       };
-      upload(pointBuffers.position!, geometry.positions);
+      upload(pointBuffers.position!, formations[0]);
       upload(pointBuffers.color!, geometry.colors);
       upload(pointBuffers.lightColor!, geometry.lightColors);
-      upload(pointBuffers.target!, currentTarget);
+      upload(pointBuffers.target!, formations[activeTargetStage]);
       upload(pointBuffers.size!, geometry.sizes);
       upload(pointBuffers.starSize!, geometry.starSizes);
       upload(pointBuffers.starType!, geometry.starTypes);
       upload(pointBuffers.twinkle!, geometry.twinkles);
-      upload(lineBuffers.position!, geometry.linePositions);
-      upload(lineBuffers.color!, geometry.lineColors);
-      upload(lineBuffers.lightColor!, geometry.lineLightColors);
 
       const resize = () => {
         if (!gl || !canvas) return;
@@ -520,45 +541,32 @@ export default function SignalSculpture({ state, reducedMotion }: { state: Scene
         const frameInterval = lowPower ? 32 : 20;
         if (now - lastFrame < frameInterval && !reducedMotion) return;
         lastFrame = now;
-        smoothMouse.x += (mouse.current.x - smoothMouse.x) * 0.045;
-        smoothMouse.y += (mouse.current.y - smoothMouse.y) * 0.045;
+        smoothMouse.x += (mouse.current.x - smoothMouse.x) * 0.095;
+        smoothMouse.y += (mouse.current.y - smoothMouse.y) * 0.095;
+        pointerInfluence += ((pointerActive ? 1 : 0) - pointerInfluence) * (pointerActive ? 0.12 : 0.075);
         gl.useProgram(program);
         gl.clear(gl.COLOR_BUFFER_BIT);
-        const desiredStage = Math.max(0, Math.min(formations.length - 1, Math.round(state.particleMorph || 0)));
-        if (desiredStage !== activeStage) {
-          const previousProgress = Math.max(0, Math.min(1, (now - transitionStarted) / MOTION_CONFIG.particleMorphDurationMs));
-          for (let i = 0; i < currentBase.length; i++) currentBase[i] += (currentTarget[i] - currentBase[i]) * previousProgress;
-          upload(pointBuffers.position!, currentBase);
-          activeStage = desiredStage;
-          currentTarget = formations[activeStage];
-          upload(pointBuffers.target!, currentTarget);
-          transitionStarted = now;
+        const desiredMorph = Math.max(0, Math.min(formations.length - 1, state.particleMorph || 0));
+        const stagePosition = reducedMotion ? Math.round(desiredMorph) : desiredMorph;
+        const fromStage = Math.min(formations.length - 1, Math.floor(stagePosition));
+        const toStage = Math.min(fromStage + 1, formations.length - 1);
+        if (fromStage !== activeStage || toStage !== activeTargetStage) {
+          activeStage = fromStage;
+          activeTargetStage = toStage;
+          upload(pointBuffers.position!, formations[activeStage]);
+          upload(pointBuffers.target!, formations[activeTargetStage]);
         }
-        const morphProgress = reducedMotion ? 1 : Math.min(1, (now - transitionStarted) / MOTION_CONFIG.particleMorphDurationMs);
+        const morphProgress = reducedMotion ? 0 : stagePosition - fromStage;
         if (uniform.morph) gl.uniform1f(uniform.morph, morphProgress);
-        if (uniform.velocity) gl.uniform1f(uniform.velocity, state.intensity || 0);
-        if (uniform.structure) gl.uniform1f(uniform.structure, activeStage === 0 ? 1 : 0.12);
-        if (uniform.camera) gl.uniform1f(uniform.camera, state.cameraProgress || 0);
+        if (uniform.velocity) gl.uniform1f(uniform.velocity, reducedMotion ? 0 : state.intensity || 0);
+        if (uniform.camera) gl.uniform1f(uniform.camera, reducedMotion ? 0 : state.cameraProgress || 0);
         if (uniform.time) gl.uniform1f(uniform.time, reducedMotion ? 0 : (now - started) / 1000);
         if (uniform.mouse) gl.uniform2f(uniform.mouse, smoothMouse.x, smoothMouse.y);
         if (uniform.resolution) gl.uniform2f(uniform.resolution, canvas.width, canvas.height);
         if (uniform.interactive) gl.uniform1f(uniform.interactive, reducedMotion || lowPower ? 0 : 1);
-        if (uniform.pointerActive) gl.uniform1f(uniform.pointerActive, pointerActive ? 1 : 0);
+        if (uniform.pointerActive) gl.uniform1f(uniform.pointerActive, reducedMotion ? 0 : pointerInfluence);
         if (uniform.opacity) gl.uniform1f(uniform.opacity, state.opacity);
         if (uniform.light) gl.uniform1f(uniform.light, document.documentElement.dataset.theme === "light" ? 1 : 0);
-
-        bindAttribute(lineBuffers.position!, attribute.position, 3);
-        bindAttribute(lineBuffers.position!, attribute.target, 3);
-        bindAttribute(lineBuffers.color!, attribute.color, 3);
-        bindAttribute(lineBuffers.lightColor!, attribute.lightColor, 3);
-        [attribute.starSize, attribute.starType, attribute.twinkle].forEach((location) => gl!.disableVertexAttribArray(location));
-        gl.disableVertexAttribArray(attribute.size);
-        gl.vertexAttrib1f(attribute.size, 0.0);
-        gl.vertexAttrib1f(attribute.starSize, 1.0);
-        gl.vertexAttrib1f(attribute.starType, 0.0);
-        gl.vertexAttrib1f(attribute.twinkle, 0.0);
-        gl.lineWidth(1);
-        gl.drawArrays(gl.LINES, 0, geometry.linePositions.length / 3);
 
         bindAttribute(pointBuffers.position!, attribute.position, 3);
         bindAttribute(pointBuffers.color!, attribute.color, 3);
@@ -604,12 +612,12 @@ export default function SignalSculpture({ state, reducedMotion }: { state: Scene
       canvas.addEventListener("webglcontextlost", onContextLost);
 
       const onPointerMove = (event: PointerEvent) => {
-        if (event.pointerType === "touch") return;
         mouse.current.x = (event.clientX / Math.max(1, window.innerWidth)) * 2 - 1;
         mouse.current.y = 1 - (event.clientY / Math.max(1, window.innerHeight)) * 2;
         pointerActive = true;
+        pointerIsActive.current = true;
       };
-      const onPointerLeave = () => { mouse.current.x = 0; mouse.current.y = 0; pointerActive = false; };
+      const onPointerLeave = () => { pointerActive = false; pointerIsActive.current = false; };
       window.addEventListener("pointermove", onPointerMove, { passive: true });
       window.addEventListener("pointerleave", onPointerLeave);
       window.addEventListener("blur", onPointerLeave);
@@ -624,6 +632,7 @@ export default function SignalSculpture({ state, reducedMotion }: { state: Scene
         window.removeEventListener("pointermove", onPointerMove);
         window.removeEventListener("pointerleave", onPointerLeave);
         window.removeEventListener("blur", onPointerLeave);
+        window.removeEventListener("portfolio:motion-update", onReducedMotionUpdate);
         stopTicker();
         if (gl) {
           buffers.forEach((buffer) => gl?.deleteBuffer(buffer));
@@ -636,20 +645,46 @@ export default function SignalSculpture({ state, reducedMotion }: { state: Scene
       canvas.style.opacity = "0";
       fallback.style.opacity = "1";
     }
-  }, [reducedMotion, state]);
+  }, [reducedMotion, state, portraitSamples, fallbackGeometry]);
 
   useEffect(() => {
     const fallback = fallbackCanvas.current;
     if (!fallback) return;
-    const redraw = () => drawFallback(fallback);
+    const redraw = () => {
+      if (fallbackGeometry) drawFallback(fallback, fallbackGeometry, { ...mouse.current, active: pointerIsActive.current && !reducedMotion });
+    };
     const observer = new MutationObserver(redraw);
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
     window.addEventListener("resize", redraw, { passive: true });
+    let redrawFrame = 0;
+    const onPointerMove = (event: PointerEvent) => {
+      mouse.current.x = (event.clientX / Math.max(1, window.innerWidth)) * 2 - 1;
+      mouse.current.y = 1 - (event.clientY / Math.max(1, window.innerHeight)) * 2;
+      pointerIsActive.current = true;
+      if (fallback.style.opacity !== "1" || redrawFrame) return;
+      redrawFrame = window.requestAnimationFrame(() => {
+        redrawFrame = 0;
+        redraw();
+      });
+    };
+    const onPointerLeave = () => {
+      pointerIsActive.current = false;
+      mouse.current.x = 0;
+      mouse.current.y = 0;
+      if (fallback.style.opacity === "1") redraw();
+    };
+    window.addEventListener("pointermove", onPointerMove, { passive: true });
+    window.addEventListener("pointerleave", onPointerLeave);
+    window.addEventListener("blur", onPointerLeave);
     return () => {
       observer.disconnect();
       window.removeEventListener("resize", redraw);
+      window.removeEventListener("pointermove", onPointerMove);
+      window.removeEventListener("pointerleave", onPointerLeave);
+      window.removeEventListener("blur", onPointerLeave);
+      if (redrawFrame) window.cancelAnimationFrame(redrawFrame);
     };
-  }, []);
+  }, [fallbackGeometry, reducedMotion]);
 
   return (
     <div ref={root} className="fixed inset-0 z-0 pointer-events-none" aria-hidden="true">

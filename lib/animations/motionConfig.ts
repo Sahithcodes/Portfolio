@@ -10,7 +10,6 @@ export const MOTION_CONFIG = {
     statement: 3,
     contact: 4,
   } as Record<string, number>,
-  particleMorphDurationMs: 1200,
   velocityIntensityScale: 2.5,
-  particleOpacityStops: [0.92, 0.62, 0.44, 0.34, 0.25, 0.20, 0.20, 0.20],
+  particleOpacityStops: [1.0, 0.88, 0.74, 0.62, 0.48, 0.40, 0.34, 0.30],
 } as const;

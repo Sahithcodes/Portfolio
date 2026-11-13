@@ -58,12 +58,18 @@ export function AnimationProvider({ children }: { children: React.ReactNode }) {
           .find((el) => { const r = el.getBoundingClientRect(); return r.top <= marker && r.bottom > marker; });
         if (active) {
           state.activeSection = active.id;
-          state.particleMorph = MOTION_CONFIG.particleStageBySection[active.id] ?? 0;
-          state.cameraProgress = state.progress;
           const opacityStops = MOTION_CONFIG.particleOpacityStops;
           const index = Math.max(0, sections.indexOf(active.id as (typeof sections)[number]));
           const rect = active.getBoundingClientRect();
           const sectionProgress = Math.max(0, Math.min(1, (marker - rect.top) / Math.max(1, rect.height)));
+          const stageHere = MOTION_CONFIG.particleStageBySection[active.id] ?? 0;
+          const stageBefore = index > 0
+            ? MOTION_CONFIG.particleStageBySection[sections[index - 1]] ?? stageHere
+            : stageHere;
+          state.particleMorph = index === 0
+            ? stageHere
+            : stageBefore + (stageHere - stageBefore) * sectionProgress;
+          state.cameraProgress = state.progress;
           const from = opacityStops[index] ?? 0.2;
           const to = opacityStops[index + 1] ?? from;
           state.opacity = from + (to - from) * sectionProgress;
