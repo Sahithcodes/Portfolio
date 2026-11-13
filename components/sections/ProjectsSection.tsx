@@ -229,6 +229,7 @@ export default function ProjectsSection() {
     <section
       ref={sectionRef}
       id="projects"
+      data-cursor="DRAG"
       className="relative scroll-mt-20 transition-colors duration-300"
     >
       {/* =========================================================================

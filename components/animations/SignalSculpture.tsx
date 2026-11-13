@@ -1,19 +1,24 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { gsap } from "@/lib/animations/gsap";
+import { MOTION_CONFIG } from "@/lib/animations/motionConfig";
 
-type SceneState = { dissolve: number; opacity: number };
+type SceneState = { opacity: number; particleMorph: number; intensity: number; cameraProgress: number };
 
 const vertexShader = `
 attribute vec3 aPosition;
+attribute vec3 aTarget;
 attribute vec3 aColor;
 attribute vec3 aLightColor;
-attribute vec3 aScatter;
 attribute float aSize;
 attribute float aStarSize;
 attribute float aStarType;
 attribute float aTwinkle;
-uniform float uDissolve;
+uniform float uMorph;
+uniform float uVelocity;
+uniform float uStructure;
+uniform float uCamera;
 uniform float uTime;
 uniform vec2 uMouse;
 uniform vec2 uResolution;
@@ -29,16 +34,16 @@ varying float vStarShape;
 varying float vTwinkle;
 varying float vLine;
 void main() {
-  float d = clamp(uDissolve, 0.0, 1.0);
+  float d = clamp(uMorph, 0.0, 1.0);
   float aspect = uResolution.x / max(1.0, uResolution.y);
   float mobile = 1.0 - step(0.72, aspect);
-  vec3 p = aPosition;
+  vec3 p = mix(aPosition, aTarget, d);
   p += vec3(
     sin(uTime * 0.20 + aPosition.y * 3.0),
     cos(uTime * 0.17 + aPosition.x * 3.0),
     sin(uTime * 0.16 + aPosition.z * 4.0)
   ) * 0.006;
-  float yaw = uTime * 0.055 + uMouse.x * 0.16 * uInteractive;
+  float yaw = uTime * 0.055 + uCamera * 0.10 + uMouse.x * 0.16 * uInteractive + uVelocity * 0.025;
   float pitch = sin(uTime * 0.13) * 0.035 - uMouse.y * 0.11 * uInteractive;
   float cy = cos(yaw), sy = sin(yaw);
   p.xz = mat2(cy, -sy, sy, cy) * p.xz;
@@ -53,17 +58,14 @@ void main() {
   p.xy = p.xy * size + center;
   float perspective = 1.0 / (1.0 + p.z * 0.22);
   vec2 sculpturePosition = p.xy * perspective;
-  vec2 destination = aScatter.xy;
-  vec2 direction = destination - sculpturePosition;
-  vec2 flightArc = vec2(-direction.y, direction.x) * sin(d * 3.14159265) * aTwinkle * 0.075;
-  vec2 scenePosition = mix(sculpturePosition, destination, d) + flightArc;
+  vec2 scenePosition = sculpturePosition;
 
-  // A small, local push gives the pointer a tangible effect without deforming
-  // the complete sculpture. The same response works on the dispersed stars.
+  // A small local push gives the pointer a tangible effect without deforming
+  // the complete sculpture or its morphed formations.
   vec2 mouseDelta = scenePosition - uMouse;
   float mouseFalloff = 1.0 - smoothstep(0.015, 0.20, length(mouseDelta));
   scenePosition += normalize(mouseDelta + vec2(0.00001)) * mouseFalloff * 0.045 * uInteractive * uPointerActive;
-  gl_Position = vec4(scenePosition, mix(-p.z * 0.18, aScatter.z, d), 1.0);
+  gl_Position = vec4(scenePosition, -p.z * 0.18, 1.0);
   gl_PointSize = mix(aSize, aStarSize, d) * (1.0 + p.z * 0.22);
   vColor = mix(aColor, aLightColor, uLightTheme);
   vCore = smoothstep(2.0, 6.0, aSize);
@@ -78,7 +80,7 @@ void main() {
   float twinkle = 0.68 + 0.32 * sin(uTime * (1.2 + aTwinkle * 2.4) + aPosition.x * 41.0 + aPosition.y * 29.0);
   float structureAlpha = (0.76 + 0.12 * sin(uTime * 0.5 + aPosition.x * 8.0 + aPosition.z * 5.0));
   float starAlpha = mix(1.0, twinkle, d * (0.3 + aTwinkle * 0.7));
-  vAlpha = mix(structureAlpha, starAlpha, d) * uOpacity * mobileAlpha * themeAlpha * mix(1.0, 1.0 - d, vLine);
+  vAlpha = mix(structureAlpha, starAlpha, d) * uOpacity * mobileAlpha * themeAlpha * mix(1.0, uStructure, vLine);
 }`;
 
 const fragmentShader = `
@@ -120,8 +122,8 @@ const DARK_PALETTE = [
   [0.133, 0.722, 0.667], // teal
   [0.384, 0.835, 0.773], // secondary teal
   [0.843, 0.91, 0.859], // a few pale signal points
-  [0.902, 0.604, 0.333], // restrained amber
-  [0.851, 0.471, 0.384], // rare terracotta
+  [0.184, 0.604, 0.588], // blue-green
+  [0.357, 0.78, 0.749], // turquoise highlight
   [0.663, 0.725, 0.667], // sage
 ];
 const LIGHT_PALETTE = [
@@ -210,7 +212,7 @@ function makeGeometry(count: number) {
     scatter[index + 2] = random() * 1.2 - 0.6;
 
     const colorRoll = random();
-    // Teal traces dominate; warm notes stay as small, deliberate signals.
+    // Teal and turquoise traces dominate, with a few pale signal points.
     const colorIndex = colorRoll < 0.60 ? 0 : colorRoll < 0.87 ? 1 : colorRoll < 0.94 ? 2 : colorRoll < 0.975 ? 3 : colorRoll < 0.985 ? 4 : 5;
     const color = DARK_PALETTE[colorIndex];
     const lightColor = LIGHT_PALETTE[colorIndex];
@@ -265,6 +267,62 @@ function makeGeometry(count: number) {
     lineColors: new Float32Array(lineColors),
     lineLightColors: new Float32Array(lineLightColors),
   };
+}
+
+function makeFormations(count: number, base: Float32Array): Float32Array[] {
+  const network = new Float32Array(count * 3);
+  const grid = new Float32Array(count * 3);
+  const project = new Float32Array(count * 3);
+  const text = new Float32Array(count * 3);
+  const random = randomFactory(20261111);
+  const sampledText: Vec3[] = [];
+  if (typeof document !== "undefined") {
+    const canvas = document.createElement("canvas");
+    canvas.width = 1024; canvas.height = 280;
+    const context = canvas.getContext("2d", { willReadFrequently: true });
+    if (context) {
+      context.clearRect(0, 0, canvas.width, canvas.height);
+      context.fillStyle = "#fff";
+      context.font = "700 174px Arial, sans-serif";
+      context.textAlign = "center";
+      context.textBaseline = "middle";
+      context.fillText("SAHITH.exe", canvas.width / 2, canvas.height / 2, 980);
+      const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
+      for (let y = 0; y < canvas.height; y += 3) for (let x = 0; x < canvas.width; x += 3) {
+        if (pixels[(y * canvas.width + x) * 4 + 3] > 128) sampledText.push([(x / canvas.width - 0.5) * 1.25, (0.5 - y / canvas.height) * 0.5, (random() - 0.5) * 0.025]);
+      }
+    }
+  }
+  for (let i = 0; i < count; i++) {
+    const k = i * 3;
+    const y = 1 - 2 * ((i + 0.5) / count);
+    const angle = i * 2.399963229728653;
+    const radius = Math.sqrt(Math.max(0, 1 - y * y));
+    network[k] = radius * Math.cos(angle) * 0.67;
+    network[k + 1] = y * 0.67;
+    network[k + 2] = radius * Math.sin(angle) * 0.48;
+
+    const gx = (i % 80) / 79 - 0.5;
+    const gy = (Math.floor(i / 80) % 80) / 79 - 0.5;
+    const layer = Math.floor(i / 6400);
+    grid[k] = gx * 1.35;
+    grid[k + 1] = gy * 1.35;
+    grid[k + 2] = (layer - 0.5) * 0.34 + Math.sin(i * 0.19) * 0.025;
+
+    // Three linked technical columns with cross braces: an abstract systems structure.
+    const column = i % 3;
+    const phase = Math.floor(i / 3) / Math.ceil(count / 3);
+    const a = phase * Math.PI * 2;
+    const centers = [-0.42, 0, 0.42];
+    const r = 0.12 + (column === 1 ? 0.1 : 0);
+    project[k] = centers[column] + Math.cos(a) * r;
+    project[k + 1] = phase * 0.96 - 0.48;
+    project[k + 2] = Math.sin(a) * r * 0.62 + (column - 1) * 0.04;
+
+    const point = sampledText.length ? sampledText[(i * 97) % sampledText.length] : [base[k], base[k + 1], base[k + 2]] as Vec3;
+    text[k] = point[0]; text[k + 1] = point[1]; text[k + 2] = point[2];
+  }
+  return [base, network, grid, project, text];
 }
 
 function compile(gl: WebGLRenderingContext, type: number, source: string) {
@@ -339,8 +397,8 @@ export default function SignalSculpture({ state, reducedMotion }: { state: Scene
     let gl: WebGLRenderingContext | null = null;
     let program: WebGLProgram | null = null;
     let buffers: WebGLBuffer[] = [];
-    let frame = 0;
     let visible = true;
+    let tickerAttached = false;
     let disposed = false;
     let lastFrame = 0;
     let smoothMouse = { x: 0, y: 0 };
@@ -370,19 +428,27 @@ export default function SignalSculpture({ state, reducedMotion }: { state: Scene
       }
 
       const lowPower = window.innerWidth < 768 || (navigator as Navigator & { deviceMemory?: number }).deviceMemory === 2;
-      const geometry = makeGeometry(lowPower ? 2400 : 6400);
+      const geometry = makeGeometry(lowPower ? 2200 : 9000);
+      const formations = makeFormations(geometry.sizes.length, geometry.positions);
+      let currentBase = new Float32Array(geometry.positions);
+      let activeStage = 0;
+      let currentTarget = formations[0];
+      let transitionStarted = performance.now();
       const attribute = {
         position: gl.getAttribLocation(program, "aPosition"),
         color: gl.getAttribLocation(program, "aColor"),
         lightColor: gl.getAttribLocation(program, "aLightColor"),
-        scatter: gl.getAttribLocation(program, "aScatter"),
+        target: gl.getAttribLocation(program, "aTarget"),
         size: gl.getAttribLocation(program, "aSize"),
         starSize: gl.getAttribLocation(program, "aStarSize"),
         starType: gl.getAttribLocation(program, "aStarType"),
         twinkle: gl.getAttribLocation(program, "aTwinkle"),
       };
       const uniform = {
-        dissolve: gl.getUniformLocation(program, "uDissolve"),
+        morph: gl.getUniformLocation(program, "uMorph"),
+        velocity: gl.getUniformLocation(program, "uVelocity"),
+        structure: gl.getUniformLocation(program, "uStructure"),
+        camera: gl.getUniformLocation(program, "uCamera"),
         time: gl.getUniformLocation(program, "uTime"),
         mouse: gl.getUniformLocation(program, "uMouse"),
         resolution: gl.getUniformLocation(program, "uResolution"),
@@ -398,7 +464,7 @@ export default function SignalSculpture({ state, reducedMotion }: { state: Scene
         position: gl.createBuffer(),
         color: gl.createBuffer(),
         lightColor: gl.createBuffer(),
-        scatter: gl.createBuffer(),
+        target: gl.createBuffer(),
         size: gl.createBuffer(),
         starSize: gl.createBuffer(),
         starType: gl.createBuffer(),
@@ -416,7 +482,7 @@ export default function SignalSculpture({ state, reducedMotion }: { state: Scene
       upload(pointBuffers.position!, geometry.positions);
       upload(pointBuffers.color!, geometry.colors);
       upload(pointBuffers.lightColor!, geometry.lightColors);
-      upload(pointBuffers.scatter!, geometry.scatter);
+      upload(pointBuffers.target!, currentTarget);
       upload(pointBuffers.size!, geometry.sizes);
       upload(pointBuffers.starSize!, geometry.starSizes);
       upload(pointBuffers.starType!, geometry.starTypes);
@@ -452,16 +518,27 @@ export default function SignalSculpture({ state, reducedMotion }: { state: Scene
       const render = (now: number) => {
         if (disposed || contextLost || !gl || !program || !visible) return;
         const frameInterval = lowPower ? 32 : 20;
-        if (now - lastFrame < frameInterval && !reducedMotion) {
-          frame = requestAnimationFrame(render);
-          return;
-        }
+        if (now - lastFrame < frameInterval && !reducedMotion) return;
         lastFrame = now;
         smoothMouse.x += (mouse.current.x - smoothMouse.x) * 0.045;
         smoothMouse.y += (mouse.current.y - smoothMouse.y) * 0.045;
         gl.useProgram(program);
         gl.clear(gl.COLOR_BUFFER_BIT);
-        if (uniform.dissolve) gl.uniform1f(uniform.dissolve, state.dissolve);
+        const desiredStage = Math.max(0, Math.min(formations.length - 1, Math.round(state.particleMorph || 0)));
+        if (desiredStage !== activeStage) {
+          const previousProgress = Math.max(0, Math.min(1, (now - transitionStarted) / MOTION_CONFIG.particleMorphDurationMs));
+          for (let i = 0; i < currentBase.length; i++) currentBase[i] += (currentTarget[i] - currentBase[i]) * previousProgress;
+          upload(pointBuffers.position!, currentBase);
+          activeStage = desiredStage;
+          currentTarget = formations[activeStage];
+          upload(pointBuffers.target!, currentTarget);
+          transitionStarted = now;
+        }
+        const morphProgress = reducedMotion ? 1 : Math.min(1, (now - transitionStarted) / MOTION_CONFIG.particleMorphDurationMs);
+        if (uniform.morph) gl.uniform1f(uniform.morph, morphProgress);
+        if (uniform.velocity) gl.uniform1f(uniform.velocity, state.intensity || 0);
+        if (uniform.structure) gl.uniform1f(uniform.structure, activeStage === 0 ? 1 : 0.12);
+        if (uniform.camera) gl.uniform1f(uniform.camera, state.cameraProgress || 0);
         if (uniform.time) gl.uniform1f(uniform.time, reducedMotion ? 0 : (now - started) / 1000);
         if (uniform.mouse) gl.uniform2f(uniform.mouse, smoothMouse.x, smoothMouse.y);
         if (uniform.resolution) gl.uniform2f(uniform.resolution, canvas.width, canvas.height);
@@ -471,10 +548,10 @@ export default function SignalSculpture({ state, reducedMotion }: { state: Scene
         if (uniform.light) gl.uniform1f(uniform.light, document.documentElement.dataset.theme === "light" ? 1 : 0);
 
         bindAttribute(lineBuffers.position!, attribute.position, 3);
+        bindAttribute(lineBuffers.position!, attribute.target, 3);
         bindAttribute(lineBuffers.color!, attribute.color, 3);
         bindAttribute(lineBuffers.lightColor!, attribute.lightColor, 3);
-        [attribute.scatter, attribute.starSize, attribute.starType, attribute.twinkle].forEach((location) => gl!.disableVertexAttribArray(location));
-        gl.vertexAttrib3f(attribute.scatter, 0, 0, 0);
+        [attribute.starSize, attribute.starType, attribute.twinkle].forEach((location) => gl!.disableVertexAttribArray(location));
         gl.disableVertexAttribArray(attribute.size);
         gl.vertexAttrib1f(attribute.size, 0.0);
         gl.vertexAttrib1f(attribute.starSize, 1.0);
@@ -486,30 +563,41 @@ export default function SignalSculpture({ state, reducedMotion }: { state: Scene
         bindAttribute(pointBuffers.position!, attribute.position, 3);
         bindAttribute(pointBuffers.color!, attribute.color, 3);
         bindAttribute(pointBuffers.lightColor!, attribute.lightColor, 3);
-        bindAttribute(pointBuffers.scatter!, attribute.scatter, 3);
+        bindAttribute(pointBuffers.target!, attribute.target, 3);
         bindAttribute(pointBuffers.size!, attribute.size, 1);
         bindAttribute(pointBuffers.starSize!, attribute.starSize, 1);
         bindAttribute(pointBuffers.starType!, attribute.starType, 1);
         bindAttribute(pointBuffers.twinkle!, attribute.twinkle, 1);
         gl.drawArrays(gl.POINTS, 0, geometry.sizes.length);
-        if (!reducedMotion) frame = requestAnimationFrame(render);
+      };
+      const onTicker = (time: number) => render(time * 1000);
+      const onReducedMotionUpdate = () => { if (reducedMotion) render(performance.now()); };
+      if (reducedMotion) window.addEventListener("portfolio:motion-update", onReducedMotionUpdate);
+      const startTicker = () => {
+        if (!tickerAttached && !reducedMotion) {
+          gsap.ticker.add(onTicker);
+          tickerAttached = true;
+        }
+      };
+      const stopTicker = () => {
+        if (tickerAttached) {
+          gsap.ticker.remove(onTicker);
+          tickerAttached = false;
+        }
       };
 
       const intersection = new IntersectionObserver(([entry]) => {
         visible = entry.isIntersecting;
-        if (visible && !reducedMotion && !frame) frame = requestAnimationFrame(render);
-        if (!visible && frame) {
-          cancelAnimationFrame(frame);
-          frame = 0;
-        }
+        if (visible) startTicker();
+        else stopTicker();
       }, { rootMargin: "120px" });
       if (root.current) intersection.observe(root.current);
 
       const onContextLost = (event: Event) => {
         event.preventDefault();
         contextLost = true;
-        if (frame) cancelAnimationFrame(frame);
-        frame = 0;
+        stopTicker();
+        window.removeEventListener("portfolio:motion-update", onReducedMotionUpdate);
         canvas.style.opacity = "0";
         fallback.style.opacity = "1";
       };
@@ -526,7 +614,7 @@ export default function SignalSculpture({ state, reducedMotion }: { state: Scene
       window.addEventListener("pointerleave", onPointerLeave);
       window.addEventListener("blur", onPointerLeave);
       if (reducedMotion) render(performance.now());
-      else if (visible) frame = requestAnimationFrame(render);
+      else if (visible) startTicker();
 
       return () => {
         disposed = true;
@@ -536,13 +624,15 @@ export default function SignalSculpture({ state, reducedMotion }: { state: Scene
         window.removeEventListener("pointermove", onPointerMove);
         window.removeEventListener("pointerleave", onPointerLeave);
         window.removeEventListener("blur", onPointerLeave);
-        if (frame) cancelAnimationFrame(frame);
+        stopTicker();
         if (gl) {
           buffers.forEach((buffer) => gl?.deleteBuffer(buffer));
           if (program) gl.deleteProgram(program);
         }
       };
     } catch {
+      if (gl) buffers.forEach((buffer) => gl?.deleteBuffer(buffer));
+      if (gl && program) gl.deleteProgram(program);
       canvas.style.opacity = "0";
       fallback.style.opacity = "1";
     }

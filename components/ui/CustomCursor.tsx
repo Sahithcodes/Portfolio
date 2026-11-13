@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef } from "react";
+import { gsap } from "@/lib/animations/gsap";
 
 export default function CustomCursor() {
   const ringRef = useRef<HTMLDivElement | null>(null);
@@ -29,7 +30,8 @@ export default function CustomCursor() {
     let currentY = -100;
     let isVisible = false;
     let isHovered = false;
-    let animationFrameId: number;
+    let currentLabel = "";
+    let cursorLabel: HTMLSpanElement | null = null;
 
     const onMouseMove = (e: MouseEvent) => {
       targetX = e.clientX;
@@ -59,44 +61,55 @@ export default function CustomCursor() {
         target?.closest("textarea") ||
         target?.closest(".project-card");
 
-      const nextHovered = Boolean(interactive);
-      if (nextHovered !== isHovered) {
+      const contextTarget = target?.closest<HTMLElement>("[data-cursor]");
+      const label = target?.closest(".project-card") ? "VIEW PROJECT" : contextTarget?.dataset.cursor || "";
+      const nextHovered = Boolean(interactive) || Boolean(label);
+      if (nextHovered !== isHovered || label !== currentLabel) {
         isHovered = nextHovered;
+        currentLabel = label;
         if (isHovered) {
-          ring.style.width = "48px";
-          ring.style.height = "48px";
+          const focus = label === "FOCUS";
+          ring.style.width = label && !focus ? "112px" : "48px";
+          ring.style.height = label && !focus ? "42px" : "48px";
           ring.style.borderColor = "var(--primary)";
           ring.style.backgroundColor = "var(--accent-subtle)";
+          if (cursorLabel) cursorLabel.textContent = label;
         } else {
           ring.style.width = "28px";
           ring.style.height = "28px";
           ring.style.borderColor = "var(--border)";
           ring.style.backgroundColor = "transparent";
+          if (cursorLabel) cursorLabel.textContent = "";
         }
       }
     };
 
     // Smooth trailing ring loop using direct DOM writes (Zero React state updates)
     const ease = 0.2;
+    cursorLabel = document.createElement("span");
+    cursorLabel.className = "fixed top-0 left-0 flex items-center justify-center font-mono text-[9px] tracking-widest text-content-primary whitespace-nowrap";
+    cursorLabel.style.pointerEvents = "none";
+    container.appendChild(cursorLabel);
     const tick = () => {
       if (isVisible) {
         currentX += (targetX - currentX) * ease;
         currentY += (targetY - currentY) * ease;
         ring.style.transform = `translate3d(${currentX}px, ${currentY}px, 0) translate(-50%, -50%)`;
+        cursorLabel!.style.transform = `translate3d(${currentX}px, ${currentY}px, 0) translate(-50%, -50%)`;
       }
-      animationFrameId = requestAnimationFrame(tick);
     };
 
     window.addEventListener("mousemove", onMouseMove, { passive: true });
     window.addEventListener("mouseover", onMouseOver, { passive: true });
     document.addEventListener("mouseleave", onMouseLeave);
-    animationFrameId = requestAnimationFrame(tick);
+    gsap.ticker.add(tick);
 
     return () => {
       window.removeEventListener("mousemove", onMouseMove);
       window.removeEventListener("mouseover", onMouseOver);
       document.removeEventListener("mouseleave", onMouseLeave);
-      cancelAnimationFrame(animationFrameId);
+      gsap.ticker.remove(tick);
+      cursorLabel?.remove();
     };
   }, []);
 

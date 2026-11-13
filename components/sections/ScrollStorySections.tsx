@@ -33,7 +33,7 @@ export function CinematicStatementSection() {
     return () => mm.revert();
   }, []);
 
-  return <section ref={section} aria-label="A statement about my work" className="cinematic-statement relative min-h-[92vh] md:min-h-screen flex items-center justify-center overflow-hidden">
+  return <section ref={section} id="statement" data-cursor="FOCUS" aria-label="A statement about my work" className="cinematic-statement relative min-h-[92vh] md:min-h-screen flex items-center justify-center overflow-hidden">
     <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(var(--background-rgb),0.08)_10%,rgba(var(--background-rgb),0.25)_100%)]" />
     <Container className="relative z-10 text-center">
       <div className="statement-copy w-full max-w-5xl space-y-3 sm:space-y-5">

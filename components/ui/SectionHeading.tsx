@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
-import { gsap, prefersReducedMotion } from "@/lib/animations/gsap";
+import { gsap, ScrollTrigger, prefersReducedMotion } from "@/lib/animations/gsap";
 import { ANIMATION_CONFIG } from "@/lib/animations/animationConfig";
 
 interface SectionHeadingProps {
@@ -30,6 +30,7 @@ export default function SectionHeading({
   const eyebrowRef = useRef<HTMLDivElement | null>(null);
   const headingMaskRef = useRef<HTMLSpanElement | null>(null);
   const descRef = useRef<HTMLParagraphElement | null>(null);
+  const decodeTimer = useRef<number | null>(null);
 
   const isCenter = align === "center";
 
@@ -90,7 +91,42 @@ export default function SectionHeading({
       }
     }, containerRef);
 
-    return () => ctx.revert();
+    const heading = headingMaskRef.current;
+    const originalMarkup = heading?.innerHTML;
+    const originalText = heading?.textContent || "";
+    const decodeTrigger = heading ? ScrollTrigger.create({
+      trigger: containerRef.current,
+      start: "top 85%",
+      once: true,
+      onEnter: () => {
+        if (!heading || !originalMarkup) return;
+        let frame = 0;
+        const alphabet = "01/\\<>+=-";
+        decodeTimer.current = window.setInterval(() => {
+          frame += 1;
+          const resolved = Math.floor((frame / 8) * originalText.length);
+          heading.textContent = Array.from(originalText, (char, index) => {
+            if (char === " ") return " ";
+            if (index < resolved || frame >= 8) return char;
+            return alphabet[(index * 7 + frame * 3) % alphabet.length];
+          }).join("");
+          if (frame >= 8) {
+            if (decodeTimer.current) window.clearInterval(decodeTimer.current);
+            decodeTimer.current = null;
+            heading.innerHTML = originalMarkup;
+          }
+        }, 28);
+      },
+    }) : null;
+
+    return () => {
+      if (decodeTimer.current) {
+        window.clearInterval(decodeTimer.current);
+        if (heading && originalMarkup) heading.innerHTML = originalMarkup;
+      }
+      decodeTrigger?.kill();
+      ctx.revert();
+    };
   }, [animate]);
 
   return (
@@ -118,7 +154,7 @@ export default function SectionHeading({
       )}
 
       {/* Masked Heading Wipe */}
-      <h2 className="font-heading text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-content-primary leading-[1.1] overflow-hidden py-0.5">
+      <h2 aria-label={`${title}${highlight ? ` ${highlight}` : ""}`} className="font-heading text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-content-primary leading-[1.1] overflow-hidden py-0.5">
         <span ref={headingMaskRef} className="block">
           {title}{" "}
           {highlight && <span className="text-content-primary">{highlight}</span>}
