@@ -1,112 +1,39 @@
 "use client";
 
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
+import Link from "next/link";
 import Container from "@/components/layout/Container";
 import SectionHeading from "@/components/ui/SectionHeading";
-import { ArrowUpRight, Cpu, Layers, Terminal, Activity, Zap, ShieldCheck } from "lucide-react";
+import { ArrowUpRight, ShieldCheck } from "lucide-react";
 import { gsap, prefersReducedMotion } from "@/lib/animations/gsap";
+import { projects as PROJECTS_DATA } from "@/data/projects";
 
-interface ProjectItem {
-  id: string;
-  index: string;
-  title: string;
-  category: string;
-  description: string;
-  tags: string[];
-  status: string;
-  metricLabel: string;
-  metricValue: string;
-  icon: typeof Cpu;
-  accentBadge: string;
-  architectureDetails: {
-    label: string;
-    value: string;
-  }[];
-}
-
-const PROJECTS_DATA: ProjectItem[] = [
-  {
-    id: "vision-pipeline",
-    index: "01",
-    title: "Computer Vision & Visual Intelligence Pipeline",
-    category: "Computer Vision / Deep Learning",
-    description:
-      "High-throughput object detection and segmentation framework leveraging deep convolutional architectures, custom YOLO kernels, and real-time edge processing.",
-    tags: ["PyTorch", "OpenCV", "Python", "CUDA", "YOLOv8"],
-    status: "Research & Implementation",
-    metricLabel: "Inference Speed",
-    metricValue: "62.4 FPS @ 1080p (Edge CUDA)",
-    icon: Layers,
-    accentBadge: "Neural Tensor Flow",
-    architectureDetails: [
-      { label: "Backbone", value: "CSPDarknet53" },
-      { label: "Precision", value: "FP16 TensorRT" },
-      { label: "Latency", value: "16.02 ms / frame" },
-    ],
-  },
-  {
-    id: "multimodal-platform",
-    index: "02",
-    title: "Intelligent Multimodal Full-Stack System",
-    category: "Full-Stack AI Application",
-    description:
-      "Production-grade distributed web application integrating neural inference models with modern App Router UI, asynchronous task queues, and real-time SSE streaming.",
-    tags: ["Next.js 14", "TypeScript", "Python API", "Tailwind CSS", "Redis"],
-    status: "Production Architecture",
-    metricLabel: "Response Latency",
-    metricValue: "Sub-450ms End-to-End Turnaround",
-    icon: Cpu,
-    accentBadge: "Distributed Architecture",
-    architectureDetails: [
-      { label: "API Gateway", value: "FastAPI Async" },
-      { label: "Streaming", value: "Server-Sent Events" },
-      { label: "Queue", value: "Asynchronous Celery" },
-    ],
-  },
-  {
-    id: "model-optimization",
-    index: "03",
-    title: "Algorithmic Model Optimization Suite",
-    category: "Systems & Machine Learning",
-    description:
-      "Benchmarking and post-training quantization utilities for neural models to maximize inference throughput on resource-constrained devices while preserving accuracy.",
-    tags: ["PyTorch", "TensorRT", "ONNX", "Python", "Quantization"],
-    status: "Active R&D",
-    metricLabel: "Memory Footprint",
-    metricValue: "3.8x Model Compression Ratio",
-    icon: Terminal,
-    accentBadge: "Inference Optimization",
-    architectureDetails: [
-      { label: "Quantization", value: "INT8 Dynamic" },
-      { label: "Runtime", value: "ONNX Runtime / TRT" },
-      { label: "Accuracy Retention", value: "99.1% mAP" },
-    ],
-  },
-];
+// ScrollTrigger pinning reparents its target into a spacer. Revert it during
+// React's layout cleanup, before React removes this route's DOM tree.
+const useGSAPLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
 export default function ProjectsSection() {
   const sectionRef = useRef<HTMLElement | null>(null);
   const pinContainerRef = useRef<HTMLDivElement | null>(null);
   const trackRef = useRef<HTMLDivElement | null>(null);
   const progressBarRef = useRef<HTMLDivElement | null>(null);
-  const counterRef = useRef<HTMLSpanElement | null>(null);
-  const activeTitleRef = useRef<HTMLSpanElement | null>(null);
   const ambientStageGlowRef = useRef<HTMLDivElement | null>(null);
+  const [activeProjectIndex, setActiveProjectIndex] = useState(0);
 
-  useEffect(() => {
+  useGSAPLayoutEffect(() => {
     if (!sectionRef.current) return;
 
     if (prefersReducedMotion()) return;
 
     const mm = gsap.matchMedia();
 
-    // Desktop: Pinned Horizontal Showcase with Expanding Mask Reveals
-    mm.add("(min-width: 1024px)", () => {
+    // Keep the horizontal pin only when there is enough vertical room for the
+    // heading and full-height project card. Short desktop windows use the
+    // naturally scrolling stacked layout below.
+    mm.add("(min-width: 1024px) and (min-height: 880px)", () => {
       const pinContainer = pinContainerRef.current;
       const track = trackRef.current;
       const progressBar = progressBarRef.current;
-      const counter = counterRef.current;
-      const activeTitle = activeTitleRef.current;
       const ambientGlow = ambientStageGlowRef.current;
 
       if (!pinContainer || !track) return;
@@ -132,18 +59,12 @@ export default function ProjectsSection() {
               progressBar.style.transform = `scaleX(${self.progress})`;
             }
 
-            // Direct DOM update: Counter & Title
             const count = PROJECTS_DATA.length;
             const current = Math.min(
               count - 1,
               Math.floor(self.progress * count)
             );
-            if (counter) {
-              counter.textContent = `[ 0${current + 1} // 0${count} ]`;
-            }
-            if (activeTitle) {
-              activeTitle.textContent = PROJECTS_DATA[current].title;
-            }
+            setActiveProjectIndex(current);
 
             // Background glow drift
             if (ambientGlow) {
@@ -237,7 +158,7 @@ export default function ProjectsSection() {
           ========================================================================= */}
       <div
         ref={pinContainerRef}
-        className="hidden lg:flex flex-col justify-between h-screen w-full overflow-hidden bg-background/80 pt-20 pb-8 relative"
+        className="projects-desktop-showcase hidden lg:flex flex-col justify-between h-screen w-full overflow-hidden bg-background/80 pt-20 pb-8 relative"
       >
         {/* Dynamic Scrubbed Ambient Light Stage */}
         <div
@@ -265,16 +186,14 @@ export default function ProjectsSection() {
             <div className="flex flex-col items-end gap-2 pb-1">
               <div className="flex items-center gap-3">
                 <span
-                  ref={activeTitleRef}
                   className="font-mono text-xs text-content-secondary max-w-[280px] truncate hidden xl:inline-block"
                 >
-                  {PROJECTS_DATA[0].title}
+                  {PROJECTS_DATA[activeProjectIndex].title}
                 </span>
                 <span
-                  ref={counterRef}
                   className="font-mono text-xs uppercase tracking-wider text-accent font-semibold"
                 >
-                  [ 01 // 03 ]
+                  {`[ 0${activeProjectIndex + 1} // 0${PROJECTS_DATA.length} ]`}
                 </span>
               </div>
               <div className="w-40 h-1.5 bg-surface-elevated rounded-full overflow-hidden border border-surface-border">
@@ -303,7 +222,7 @@ export default function ProjectsSection() {
                 key={project.id}
                 className="project-card flex-shrink-0 w-[720px] xl:w-[780px] h-[520px]"
               >
-                <div className="project-inner w-full h-full p-8 rounded-3xl bg-surface border border-surface-border hover:border-accent/60 flex flex-col justify-between transition-all duration-300 hover:shadow-[0_0_45px_-5px_var(--accent-glow)] group">
+                <Link href={`/projects/${project.id}`} className="project-inner block w-full h-full p-8 rounded-3xl bg-surface border border-surface-border hover:border-accent/60 flex flex-col justify-between transition-all duration-300 hover:shadow-[0_0_45px_-5px_var(--accent-glow)] group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent">
                   {/* Top Bar: Category & External Link */}
                   <div>
                     <div className="flex items-center justify-between mb-4">
@@ -341,9 +260,8 @@ export default function ProjectsSection() {
                             {project.accentBadge}
                           </span>
                         </div>
-                        <span className="inline-flex items-center gap-1.5 font-mono text-[11px] text-accent">
-                          <Activity className="w-3.5 h-3.5 animate-pulse text-accent-amber" />
-                          <span className="text-accent-amber">{project.metricValue}</span>
+                        <span className="inline-flex items-center gap-1.5 font-mono text-[11px] text-content-muted">
+                          {project.status}
                         </span>
                       </div>
 
@@ -369,7 +287,7 @@ export default function ProjectsSection() {
                   {/* Card Footer: Tags & Status */}
                   <div className="pt-3 border-t border-surface-border/60 flex items-center justify-between">
                     <div className="flex flex-wrap gap-1.5">
-                      {project.tags.map((tag) => (
+                      {project.technologies.map((tag) => (
                         <span
                           key={tag}
                           className="px-2.5 py-0.5 rounded text-[11px] font-mono bg-surface-elevated text-content-secondary border border-surface-border/70"
@@ -383,7 +301,7 @@ export default function ProjectsSection() {
                       {project.status}
                     </span>
                   </div>
-                </div>
+                </Link>
               </div>
             );
           })}
@@ -394,7 +312,7 @@ export default function ProjectsSection() {
           MOBILE & TABLET RESPONSIVE STACKED SHOWCASE (< 1024px)
           Native touch scrolling with zero horizontal overflow
           ========================================================================= */}
-      <div className="lg:hidden py-24 sm:py-32">
+      <div className="projects-stacked-showcase lg:hidden py-24 sm:py-32">
         <Container>
           <SectionHeading
             index="03"
@@ -408,9 +326,11 @@ export default function ProjectsSection() {
             {PROJECTS_DATA.map((project) => {
               const Icon = project.icon;
               return (
-                <div
+                <Link
+                  href={`/projects/${project.id}`}
+                  aria-label={`View details for ${project.title}`}
                   key={project.id}
-                  className="p-6 sm:p-8 rounded-2xl bg-surface border border-surface-border hover:border-accent/50 hover:shadow-[0_0_30px_-5px_var(--accent-glow)] transition-all duration-300"
+                  className="block p-6 sm:p-8 rounded-2xl bg-surface border border-surface-border hover:border-accent/50 hover:shadow-[0_0_30px_-5px_var(--accent-glow)] transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                 >
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-2.5">
@@ -443,7 +363,7 @@ export default function ProjectsSection() {
                         </span>
                       </div>
                       <span className="font-mono text-[11px] text-accent-amber font-medium">
-                        {project.metricValue}
+                        {project.status}
                       </span>
                     </div>
 
@@ -463,7 +383,7 @@ export default function ProjectsSection() {
 
                   <div className="pt-4 border-t border-surface-border/60 flex flex-wrap items-center justify-between gap-2">
                     <div className="flex flex-wrap gap-1.5">
-                      {project.tags.map((tag) => (
+                      {project.technologies.map((tag) => (
                         <span
                           key={tag}
                           className="px-2 py-0.5 rounded text-[11px] font-mono bg-surface-elevated text-content-secondary border border-surface-border/70"
@@ -476,7 +396,7 @@ export default function ProjectsSection() {
                       {project.status}
                     </span>
                   </div>
-                </div>
+                </Link>
               );
             })}
           </div>

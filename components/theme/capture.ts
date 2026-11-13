@@ -30,7 +30,9 @@ const isCoarsePointer = (): boolean =>
 /** Device-pixel ratio used for both the snapshots and the overlay canvas. */
 export function renderScale(): number {
   if (typeof window === "undefined") return 1;
-  const cap = isCoarsePointer() ? 1.5 : 2;
+  // Full-page snapshots can be very tall. Keeping their pixel density near
+  // CSS resolution avoids large html2canvas uploads and GPU texture work.
+  const cap = isCoarsePointer() ? 1 : 1.25;
   return Math.min(window.devicePixelRatio || 1, cap);
 }
 

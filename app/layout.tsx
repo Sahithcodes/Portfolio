@@ -26,10 +26,12 @@ const jetbrainsMono = JetBrains_Mono({
   display: "swap",
 });
 
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL;
+
 export const metadata: Metadata = {
-  title: "K. Venkata Sahith | AI Engineer & Full-Stack Developer",
-  description:
-    "Personal portfolio of K. Venkata Sahith — B.Tech Artificial Intelligence student, AI/ML engineer, computer vision researcher, and modern full-stack developer.",
+  metadataBase: siteUrl ? new URL(siteUrl) : undefined,
+  title: "K. Venkata Sahith | AI Engineer & Computer Vision Developer",
+  description: "Explore the portfolio of K. Venkata Sahith, an Artificial Intelligence student building intelligent systems, computer vision applications, and full-stack engineering projects.",
   keywords: [
     "K. Venkata Sahith",
     "AI Engineer",
@@ -43,12 +45,13 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "en_US",
-    url: "https://sahith.dev",
-    title: "K. Venkata Sahith | AI Engineer & Full-Stack Developer",
+    title: "K. Venkata Sahith | AI Engineer & Computer Vision Developer",
     description:
-      "Building Intelligence. Engineering Experiences. Portfolio of K. Venkata Sahith.",
+      "Artificial Intelligence student building intelligent systems, computer vision applications, and full-stack engineering projects.",
     siteName: "K. Venkata Sahith Portfolio",
+    images: [{ url: "/opengraph-image", width: 1200, height: 630, alt: "K. Venkata Sahith — AI Engineer and Computer Vision Developer" }],
   },
+  alternates: siteUrl ? { canonical: siteUrl } : undefined,
 };
 
 export const viewport: Viewport = {

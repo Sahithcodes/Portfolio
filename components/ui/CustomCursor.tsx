@@ -1,12 +1,14 @@
 "use client";
 
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { gsap } from "@/lib/animations/gsap";
 
 export default function CustomCursor() {
   const ringRef = useRef<HTMLDivElement | null>(null);
   const dotRef = useRef<HTMLDivElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const cursorLabelRef = useRef<HTMLSpanElement | null>(null);
+  const [cursorLabelText, setCursorLabelText] = useState("");
 
   useEffect(() => {
     // Only enable on non-touch devices with fine pointer and no reduced motion
@@ -31,7 +33,6 @@ export default function CustomCursor() {
     let isVisible = false;
     let isHovered = false;
     let currentLabel = "";
-    let cursorLabel: HTMLSpanElement | null = null;
 
     const onMouseMove = (e: MouseEvent) => {
       targetX = e.clientX;
@@ -73,29 +74,27 @@ export default function CustomCursor() {
           ring.style.height = label && !focus ? "42px" : "48px";
           ring.style.borderColor = "var(--primary)";
           ring.style.backgroundColor = "var(--accent-subtle)";
-          if (cursorLabel) cursorLabel.textContent = label;
+          setCursorLabelText(label);
         } else {
           ring.style.width = "28px";
           ring.style.height = "28px";
           ring.style.borderColor = "var(--border)";
           ring.style.backgroundColor = "transparent";
-          if (cursorLabel) cursorLabel.textContent = "";
+          setCursorLabelText("");
         }
       }
     };
 
     // Smooth trailing ring loop using direct DOM writes (Zero React state updates)
     const ease = 0.2;
-    cursorLabel = document.createElement("span");
-    cursorLabel.className = "fixed top-0 left-0 flex items-center justify-center font-mono text-[9px] tracking-widest text-content-primary whitespace-nowrap";
-    cursorLabel.style.pointerEvents = "none";
-    container.appendChild(cursorLabel);
     const tick = () => {
       if (isVisible) {
         currentX += (targetX - currentX) * ease;
         currentY += (targetY - currentY) * ease;
         ring.style.transform = `translate3d(${currentX}px, ${currentY}px, 0) translate(-50%, -50%)`;
-        cursorLabel!.style.transform = `translate3d(${currentX}px, ${currentY}px, 0) translate(-50%, -50%)`;
+        if (cursorLabelRef.current) {
+          cursorLabelRef.current.style.transform = `translate3d(${currentX}px, ${currentY}px, 0) translate(-50%, -50%)`;
+        }
       }
     };
 
@@ -109,7 +108,6 @@ export default function CustomCursor() {
       window.removeEventListener("mouseover", onMouseOver);
       document.removeEventListener("mouseleave", onMouseLeave);
       gsap.ticker.remove(tick);
-      cursorLabel?.remove();
     };
   }, []);
 
@@ -137,6 +135,13 @@ export default function CustomCursor() {
           willChange: "transform",
         }}
       />
+      <span
+        ref={cursorLabelRef}
+        className="fixed top-0 left-0 flex items-center justify-center font-mono text-[9px] tracking-widest text-content-primary whitespace-nowrap"
+        style={{ pointerEvents: "none", willChange: "transform" }}
+      >
+        {cursorLabelText}
+      </span>
     </div>
   );
 }

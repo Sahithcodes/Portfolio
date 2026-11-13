@@ -6,6 +6,7 @@ import Button from "@/components/ui/Button";
 import { ArrowDown, ArrowUpRight, ArrowDownToLine } from "lucide-react";
 import { gsap, prefersReducedMotion } from "@/lib/animations/gsap";
 import { ANIMATION_CONFIG } from "@/lib/animations/animationConfig";
+import { profile } from "@/data/profile";
 
 export default function HeroSection() {
   const containerRef = useRef<HTMLElement | null>(null);
@@ -307,15 +308,15 @@ export default function HeroSection() {
             >
               View Projects
             </Button>
-            <Button
+            {profile.resumeAvailable ? <Button
               variant="secondary"
               size="lg"
-              href="/resume.pdf"
-              download="K_Venkata_Sahith_Resume.pdf"
+              href={profile.resumePath}
+              download="Sahith_Resume.pdf"
               rightIcon={<ArrowDownToLine className="w-4 h-4" />}
             >
               Resume
-            </Button>
+            </Button> : <Button variant="secondary" size="lg" disabled title="Add the actual PDF at public/Sahith_Resume.pdf">Resume PDF pending</Button>}
           </div>
         </div>
       </Container>

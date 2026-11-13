@@ -2,6 +2,7 @@ import React from "react";
 import Link from "next/link";
 import Container from "./Container";
 import { Mail, ArrowUpRight } from "lucide-react";
+import { profile } from "@/data/profile";
 
 // Crisp inline SVGs for standard developer brands
 function GithubIcon({ className }: { className?: string }) {
@@ -18,43 +19,25 @@ function GithubIcon({ className }: { className?: string }) {
   );
 }
 
-function LinkedinIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      role="img"
-      viewBox="0 0 24 24"
-      fill="currentColor"
-      className={className}
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451c.979 0 1.778-.773 1.778-1.729V1.73C24 .774 23.205 0 22.225 0z" />
-    </svg>
-  );
-}
-
 const NAV_LINKS = [
   { name: "Home", href: "#hero" },
   { name: "About", href: "#about" },
   { name: "Skills", href: "#skills" },
   { name: "Projects", href: "#projects" },
   { name: "Experience", href: "#experience" },
+  { name: "Certifications", href: "#certifications" },
   { name: "Contact", href: "#contact" },
 ];
 
 const SOCIAL_LINKS = [
   {
     name: "GitHub",
-    href: "https://github.com",
+    href: profile.github,
     icon: GithubIcon,
   },
   {
-    name: "LinkedIn",
-    href: "https://linkedin.com",
-    icon: LinkedinIcon,
-  },
-  {
     name: "Email",
-    href: "mailto:contact@sahith.dev",
+    href: `mailto:${profile.email}`,
     icon: Mail,
   },
 ];
@@ -78,9 +61,7 @@ export default function Footer() {
               <span className="w-1.5 h-1.5 rounded-full bg-accent shadow-[0_0_8px_var(--accent-glow)]" />
             </Link>
             <p className="mt-3 font-sans text-sm text-content-secondary max-w-sm leading-relaxed">
-              B.Tech Artificial Intelligence student, AI/ML researcher, and
-              full-stack engineer building intelligent systems with refined user
-              experiences.
+              {profile.headline}. {profile.institution}, {profile.campus}.
             </p>
             <div className="mt-4 flex items-center gap-2 font-mono text-xs text-content-secondary">
               <span className="w-2 h-2 rounded-full bg-accent shadow-[0_0_6px_var(--accent-glow)]" />

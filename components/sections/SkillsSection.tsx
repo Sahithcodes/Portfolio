@@ -3,72 +3,15 @@
 import React, { useEffect, useRef } from "react";
 import Container from "@/components/layout/Container";
 import SectionHeading from "@/components/ui/SectionHeading";
-import { Layers, Terminal, Database, Code2, Sparkles } from "lucide-react";
+import { Layers, Terminal, Database, Code2, Cpu, Server } from "lucide-react";
 import { gsap, prefersReducedMotion } from "@/lib/animations/gsap";
 import { ANIMATION_CONFIG } from "@/lib/animations/animationConfig";
+import { skillCategories, skillNotes } from "@/data/skills";
 
 export default function SkillsSection() {
   const gridRef = useRef<HTMLDivElement | null>(null);
 
-  const skillCategories = [
-    {
-      category: "AI & Machine Learning",
-      level: "Core Specialization",
-      icon: Layers,
-      skills: [
-        "Python",
-        "PyTorch",
-        "TensorFlow",
-        "OpenCV",
-        "Computer Vision",
-        "Deep Neural Networks",
-        "Scikit-Learn",
-        "Model Optimization",
-      ],
-    },
-    {
-      category: "Full-Stack Development",
-      level: "Production Architecture",
-      icon: Code2,
-      skills: [
-        "TypeScript",
-        "JavaScript",
-        "Next.js 14",
-        "React 18",
-        "Node.js",
-        "Tailwind CSS",
-        "REST APIs",
-        "Modern Web Standards",
-      ],
-    },
-    {
-      category: "Data & Infrastructure",
-      level: "Data Engineering",
-      icon: Database,
-      skills: [
-        "PostgreSQL",
-        "MongoDB",
-        "Git & GitHub",
-        "Docker (Basics)",
-        "Linux CLI",
-        "Data Pipelines",
-        "Numpy & Pandas",
-      ],
-    },
-    {
-      category: "Core Computer Science",
-      level: "Algorithmic Foundations",
-      icon: Terminal,
-      skills: [
-        "Data Structures & Algorithms",
-        "Object-Oriented Design",
-        "Problem Solving",
-        "Linear Algebra & Calculus",
-        "System Architecture",
-        "Clean Code Practices",
-      ],
-    },
-  ];
+  const skillIcons = [Terminal, Layers, Cpu, Code2, Server, Database, Code2];
 
   useEffect(() => {
     const grid = gridRef.current;
@@ -180,10 +123,10 @@ export default function SkillsSection() {
       <Container>
         <SectionHeading
           index="02"
-          eyebrow="Technical Stack"
-          title="Skills, Frameworks &"
-          highlight="Core Disciplines."
-          description="A structured overview of technical proficiencies across intelligence systems, application engineering, and computing foundations."
+            eyebrow="Technical Stack"
+            title="Tools and technologies I use"
+            highlight="in projects."
+            description="A practical overview of languages, frameworks, and tools represented in my coursework and project work."
         />
 
         <div
@@ -191,7 +134,7 @@ export default function SkillsSection() {
           className="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8 perspective-[1000px]"
         >
           {skillCategories.map((group, idx) => {
-            const Icon = group.icon;
+            const Icon = skillIcons[idx];
             return (
               <div
                 key={idx}
@@ -237,6 +180,9 @@ export default function SkillsSection() {
             );
           })}
         </div>
+        {skillNotes.map((note) => (
+          <p key={note} className="mt-4 font-mono text-[11px] leading-relaxed text-content-muted">{note}</p>
+        ))}
       </Container>
     </section>
   );

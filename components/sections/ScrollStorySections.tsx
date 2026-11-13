@@ -1,8 +1,12 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef } from "react";
 import Container from "@/components/layout/Container";
-import { gsap, prefersReducedMotion } from "@/lib/animations/gsap";
+import { gsap, ScrollTrigger, prefersReducedMotion } from "@/lib/animations/gsap";
+import { useMotion } from "@/components/animations/AnimationProvider";
+
+// The desktop focus-story ScrollTrigger pins (and reparents) its React section.
+const useGSAPLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
 const statements = [
   "Intelligent AI Systems",
@@ -47,18 +51,46 @@ export function ActiveTypographySection() {
   const section = useRef<HTMLElement>(null);
   const rows = useRef<(HTMLParagraphElement | null)[]>([]);
   const progress = useRef<HTMLDivElement>(null);
+  const skillMorphTween = useRef<gsap.core.Tween | null>(null);
+  const { motion } = useMotion();
 
-  useEffect(() => {
+  useGSAPLayoutEffect(() => {
     if (!section.current || prefersReducedMotion()) return;
     const mm = gsap.matchMedia();
     mm.add("(min-width: 768px)", () => {
       const items = rows.current.filter((item): item is HTMLParagraphElement => Boolean(item));
-      ScrollTriggerCreate(items, section.current!, progress.current!);
+      ScrollTriggerCreate(items, section.current!, progress.current!, (position) => {
+        motion.current.particleMorph = 1 + position;
+      });
     });
     mm.add("(max-width: 767px)", () => {
       gsap.fromTo(rows.current, { opacity: 0.35, y: 14 }, { opacity: 1, y: 0, duration: 0.55, stagger: 0.08, ease: "power3.out", scrollTrigger: { trigger: section.current, start: "top 80%", once: true } });
+      rows.current.forEach((row, index) => {
+        if (!row) return;
+        ScrollTrigger.create({
+          trigger: row,
+          start: "center 70%",
+          end: "center 35%",
+          onEnter: () => animateSkillFormation(index),
+          onEnterBack: () => animateSkillFormation(index),
+        });
+      });
     });
-    return () => mm.revert();
+    return () => {
+      skillMorphTween.current?.kill();
+      skillMorphTween.current = null;
+      mm.revert();
+    };
+
+    function animateSkillFormation(index: number) {
+      skillMorphTween.current?.kill();
+      skillMorphTween.current = gsap.to(motion.current, {
+        particleMorph: 1 + index,
+        duration: 0.72,
+        ease: "power2.inOut",
+        overwrite: true,
+      });
+    }
   }, []);
 
   return <section ref={section} className="focus-studio relative py-24 sm:py-32 md:py-0 md:min-h-screen md:flex md:items-center overflow-hidden" aria-label="Areas of focus">
@@ -72,13 +104,14 @@ export function ActiveTypographySection() {
   </section>;
 }
 
-function ScrollTriggerCreate(items: HTMLParagraphElement[], trigger: HTMLElement, bar: HTMLDivElement) {
+function ScrollTriggerCreate(items: HTMLParagraphElement[], trigger: HTMLElement, bar: HTMLDivElement, onPosition: (position: number) => void) {
   gsap.set(items, { transformOrigin: "left center" });
   gsap.to({ position: 0 }, {
     position: items.length - 1,
     ease: "none",
     onUpdate() {
       const position = this.targets()[0].position as number;
+      onPosition(position);
       items.forEach((item, index) => {
         const distance = Math.abs(index - position);
         gsap.set(item, { opacity: Math.max(0.22, 1 - distance * 0.29), scale: 1 - Math.min(distance, 2) * 0.035, color: distance < 0.48 ? "var(--primary)" : "var(--foreground)" });

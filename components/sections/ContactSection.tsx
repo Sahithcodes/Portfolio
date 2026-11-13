@@ -1,13 +1,30 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import Container from "@/components/layout/Container";
 import SectionHeading from "@/components/ui/SectionHeading";
 import Button from "@/components/ui/Button";
-import { Send, ArrowUpRight, CheckCircle2, Mail, MessageSquare, Sparkles } from "lucide-react";
+import { Send, ArrowUpRight, CheckCircle2, Mail } from "lucide-react";
+import { profile } from "@/data/profile";
+
+declare global {
+  interface Window {
+    turnstile?: {
+      render: (container: HTMLElement, options: Record<string, unknown>) => string;
+      remove: (widgetId: string) => void;
+      reset: (widgetId?: string) => void;
+    };
+  }
+}
+
+const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
 
 export default function ContactSection() {
-  const [submitted, setSubmitted] = useState(false);
+  const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [formMessage, setFormMessage] = useState("");
+  const [captchaToken, setCaptchaToken] = useState("");
+  const captchaRef = useRef<HTMLDivElement | null>(null);
+  const captchaWidget = useRef<string | null>(null);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -15,9 +32,57 @@ export default function ContactSection() {
     message: "",
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  useEffect(() => {
+    if (!turnstileSiteKey || !captchaRef.current) return;
+    let disposed = false;
+    const renderWidget = () => {
+      if (disposed || !captchaRef.current || !window.turnstile || captchaWidget.current) return;
+      captchaWidget.current = window.turnstile.render(captchaRef.current, {
+        sitekey: turnstileSiteKey,
+        action: "contact",
+        callback: (token: string) => { setCaptchaToken(token); setFormMessage(""); },
+        "expired-callback": () => setCaptchaToken(""),
+        "error-callback": () => { setCaptchaToken(""); setFormMessage("Spam protection could not load. Refresh and try again."); },
+      });
+    };
+    const existing = document.querySelector<HTMLScriptElement>('script[src*="challenges.cloudflare.com/turnstile"]');
+    if (window.turnstile) renderWidget();
+    else if (existing) existing.addEventListener("load", renderWidget, { once: true });
+    else {
+      const script = document.createElement("script");
+      script.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
+      script.async = true;
+      script.defer = true;
+      script.onload = renderWidget;
+      document.head.appendChild(script);
+    }
+    return () => {
+      disposed = true;
+      if (captchaWidget.current) window.turnstile?.remove(captchaWidget.current);
+      captchaWidget.current = null;
+    };
+  }, []);
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setSubmitted(true);
+    setStatus("loading");
+    setFormMessage("");
+    try {
+      const response = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...formData, captchaToken, website: (e.currentTarget.elements.namedItem("website") as HTMLInputElement)?.value || "" }),
+      });
+      const result = await response.json() as { message?: string };
+      if (!response.ok) throw new Error(result.message || "The message could not be sent. Please try again.");
+      setStatus("success");
+      setFormData({ name: "", email: "", subject: "", message: "" });
+      setCaptchaToken("");
+      if (captchaWidget.current) window.turnstile?.reset(captchaWidget.current);
+    } catch (error) {
+      setStatus("error");
+      setFormMessage(error instanceof Error ? error.message : "The message could not be sent. Please try again.");
+    }
   };
 
   return (
@@ -58,10 +123,10 @@ export default function ContactSection() {
                   Direct Line
                 </span>
                 <a
-                  href="mailto:contact@sahith.dev"
+                  href={`mailto:${profile.email}`}
                   className="font-heading text-xl sm:text-2xl font-bold text-content-primary hover:text-accent transition-colors inline-flex items-center gap-2 group"
                 >
-                  <span>contact@sahith.dev</span>
+                  <span>{profile.email}</span>
                   <ArrowUpRight className="w-4 h-4 text-accent group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
                 </a>
               </div>
@@ -91,26 +156,26 @@ export default function ContactSection() {
           {/* Form Foundation */}
           <div className="lg:col-span-7">
             <div className="contact-panel p-7 sm:p-9 rounded-2xl bg-surface border border-surface-border hover:border-accent/40 transition-colors">
-              {submitted ? (
+              {status === "success" ? (
                 <div className="py-12 flex flex-col items-center text-center space-y-3.5">
                   <CheckCircle2 className="w-14 h-14 text-accent animate-bounce" />
                   <h3 className="font-heading text-2xl font-bold text-content-primary">
                     Message Received
                   </h3>
                   <p className="font-sans text-sm text-content-secondary max-w-md">
-                    Thank you for reaching out. In Phase 3, this form validates cleanly; direct inquiries can always be sent directly to{" "}
+                    Thanks for reaching out. I’ll get back to you soon. You can also contact me at{" "}
                     <a
-                      href="mailto:contact@sahith.dev"
+                      href={`mailto:${profile.email}`}
                       className="text-accent underline hover:text-accent-hover font-medium"
                     >
-                      contact@sahith.dev
+                      {profile.email}
                     </a>
                     .
                   </p>
                   <Button
                     variant="secondary"
                     size="sm"
-                    onClick={() => setSubmitted(false)}
+                    onClick={() => { setStatus("idle"); setFormMessage(""); }}
                     className="mt-4"
                   >
                     Send Another
@@ -133,6 +198,7 @@ export default function ContactSection() {
                         type="text"
                         id="name"
                         required
+                        maxLength={80}
                         value={formData.name}
                         onChange={(e) =>
                           setFormData({ ...formData, name: e.target.value })
@@ -153,6 +219,7 @@ export default function ContactSection() {
                         type="email"
                         id="email"
                         required
+                        maxLength={254}
                         value={formData.email}
                         onChange={(e) =>
                           setFormData({ ...formData, email: e.target.value })
@@ -174,6 +241,7 @@ export default function ContactSection() {
                       type="text"
                       id="subject"
                       required
+                      maxLength={160}
                       value={formData.subject}
                       onChange={(e) =>
                         setFormData({ ...formData, subject: e.target.value })
@@ -194,6 +262,8 @@ export default function ContactSection() {
                       id="message"
                       rows={5}
                       required
+                      minLength={20}
+                      maxLength={4000}
                       value={formData.message}
                       onChange={(e) =>
                         setFormData({ ...formData, message: e.target.value })
@@ -203,16 +273,27 @@ export default function ContactSection() {
                     />
                   </div>
 
+                  <input name="website" type="text" tabIndex={-1} autoComplete="off" aria-hidden="true" className="hidden" />
+                  {turnstileSiteKey ? (
+                    <div ref={captchaRef} className="min-h-[65px]" />
+                  ) : (
+                    <p className="rounded-lg border border-surface-border bg-surface-elevated/60 p-3 text-xs leading-relaxed text-content-muted">
+                      The contact form needs Turnstile configuration before it can accept submissions. Email me directly at <a className="text-accent underline" href={`mailto:${profile.email}`}>{profile.email}</a> for now.
+                    </p>
+                  )}
+                  {formMessage && <p role="alert" className="text-sm text-accent-terracotta">{formMessage}</p>}
+
                   <Button
                     type="submit"
                     variant="primary"
                     size="lg"
                     className="w-full justify-center group"
+                    disabled={status === "loading" || !turnstileSiteKey || !captchaToken}
                     rightIcon={
                       <Send className="w-4 h-4 group-hover:translate-x-1 group-hover:-translate-y-0.5 transition-transform" />
                     }
                   >
-                    Transmit Message
+                    {status === "loading" ? "Sending…" : "Transmit Message"}
                   </Button>
                 </form>
               )}

@@ -6,6 +6,7 @@ import SectionHeading from "@/components/ui/SectionHeading";
 import { Brain, Code, Cpu } from "lucide-react";
 import { gsap, prefersReducedMotion } from "@/lib/animations/gsap";
 import { ANIMATION_CONFIG } from "@/lib/animations/animationConfig";
+import { profile } from "@/data/profile";
 
 export default function AboutSection() {
   const sectionRef = useRef<HTMLElement | null>(null);
@@ -14,32 +15,7 @@ export default function AboutSection() {
   const cardsRef = useRef<HTMLDivElement | null>(null);
   const backgroundGlowRef = useRef<HTMLDivElement | null>(null);
 
-  const highlights = [
-    {
-      icon: Brain,
-      title: "Artificial Intelligence",
-      description:
-        "Specializing in deep learning paradigms, computer vision pipelines, and intelligent multimodal agents.",
-      tag: "Core Focus",
-      metric: "Neural Inference",
-    },
-    {
-      icon: Code,
-      title: "Full-Stack Engineering",
-      description:
-        "Building scalable web platforms, resilient REST/GraphQL APIs, and polished interactive frontends.",
-      tag: "Application Layer",
-      metric: "Distributed Web",
-    },
-    {
-      icon: Cpu,
-      title: "Systems & Optimization",
-      description:
-        "Tuning neural model inference, structuring clean architectures, and writing robust algorithmic solutions.",
-      tag: "Optimization",
-      metric: "Low-Latency Code",
-    },
-  ];
+  const focusIcons = [Brain, Cpu, Code];
 
   useEffect(() => {
     if (!sectionRef.current) return;
@@ -248,7 +224,7 @@ export default function AboutSection() {
             eyebrow="Background & Direction"
             title="Bridging Theoretical AI with"
             highlight="Scalable Systems."
-            description="A B.Tech Artificial Intelligence student committed to turning machine learning research into robust, production-ready developer tools and user-centric products."
+            description="Artificial Intelligence undergraduate building practical computer vision, machine-learning, and full-stack applications."
           />
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-start">
@@ -257,22 +233,10 @@ export default function AboutSection() {
               ref={narrativeRef}
               className="about-narrative-panel lg:col-span-7 space-y-5 text-content-secondary leading-relaxed font-sans text-base sm:text-lg"
             >
+              <p>{profile.summary}</p>
               <p>
-                I am <strong className="text-content-primary font-semibold">K. Venkata Sahith</strong>,
-                an <span className="keyword-illuminate px-1.5 py-0.5 rounded transition-colors duration-200 font-medium">AI engineer and developer</span> focused
-                on modern computational systems. My work centers at the intersection of{" "}
-                <span className="keyword-illuminate px-1.5 py-0.5 rounded transition-colors duration-200 font-medium">deep learning algorithms</span> and
-                end-to-end full-stack architectures.
-              </p>
-              <p>
-                Whether analyzing complex visual datasets through{" "}
-                <span className="keyword-illuminate px-1.5 py-0.5 rounded transition-colors duration-200 font-medium">computer vision pipelines</span> or
-                architecting intuitive frontend experiences, I build software with an obsession for precision, performance, and clean code.
-              </p>
-              <p>
-                Currently exploring{" "}
-                <span className="keyword-illuminate px-1.5 py-0.5 rounded transition-colors duration-200 font-medium">multimodal neural architectures</span>,
-                real-time edge inference, and software development that empowers users with intelligent autonomy.
+                I’m currently studying Artificial Intelligence at <strong className="text-content-primary font-semibold">Amrita Vishwa Vidyapeetham, Amaravati</strong>.
+                Outside project work, I serve as General Secretary of the Robotics Club, supporting member coordination and collaborative technical activities.
               </p>
             </div>
 
@@ -281,8 +245,8 @@ export default function AboutSection() {
               ref={cardsRef}
               className="lg:col-span-5 grid grid-cols-1 gap-4.5"
             >
-              {highlights.map((item, idx) => {
-                const Icon = item.icon;
+              {profile.focusAreas.map((item, idx) => {
+                const Icon = focusIcons[idx];
                 return (
                   <div
                     key={idx}

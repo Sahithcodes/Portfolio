@@ -7,6 +7,7 @@ import Container from "./Container";
 import Button from "../ui/Button";
 import ThemeToggle from "../theme/ThemeToggle";
 import { cn } from "@/lib/utils";
+import { profile } from "@/data/profile";
 
 const NAV_LINKS = [
   { name: "Home", href: "#hero", id: "hero" },
@@ -148,16 +149,11 @@ export default function Navbar() {
           <div className="flex items-center gap-2.5 sm:gap-3">
             <ThemeToggle />
 
-            <Button
-              variant="outline"
-              size="sm"
-              href="/resume.pdf"
-              download="K_Venkata_Sahith_Resume.pdf"
-              rightIcon={<ArrowDownToLine className="w-3.5 h-3.5" />}
-              className="hidden sm:inline-flex"
-            >
-              Resume
-            </Button>
+            {profile.resumeAvailable ? (
+              <Button variant="outline" size="sm" href={profile.resumePath} download="Sahith_Resume.pdf" rightIcon={<ArrowDownToLine className="w-3.5 h-3.5" />} className="hidden sm:inline-flex">Resume</Button>
+            ) : (
+              <Button variant="outline" size="sm" disabled title="Add the actual PDF at public/Sahith_Resume.pdf" className="hidden sm:inline-flex">Resume PDF pending</Button>
+            )}
 
             {/* Mobile Menu Button */}
             <button
@@ -214,17 +210,11 @@ export default function Navbar() {
               <ThemeToggle showLabel />
             </div>
 
-            <Button
-              variant="primary"
-              size="lg"
-              href="/resume.pdf"
-              download="K_Venkata_Sahith_Resume.pdf"
-              rightIcon={<ArrowDownToLine className="w-4 h-4" />}
-              className="w-full justify-center"
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              Download Resume
-            </Button>
+            {profile.resumeAvailable ? (
+              <Button variant="primary" size="lg" href={profile.resumePath} download="Sahith_Resume.pdf" rightIcon={<ArrowDownToLine className="w-4 h-4" />} className="w-full justify-center" onClick={() => setMobileMenuOpen(false)}>Download Resume</Button>
+            ) : (
+              <Button variant="primary" size="lg" disabled title="Add the actual PDF at public/Sahith_Resume.pdf" className="w-full justify-center">Resume PDF pending</Button>
+            )}
 
             <div className="mt-4 flex items-center justify-center gap-2 text-xs font-mono text-content-secondary">
               <span className="w-2 h-2 rounded-full bg-accent animate-pulse shadow-[0_0_8px_var(--accent-glow)]" />

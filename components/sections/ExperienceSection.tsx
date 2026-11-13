@@ -5,6 +5,9 @@ import Container from "@/components/layout/Container";
 import SectionHeading from "@/components/ui/SectionHeading";
 import { gsap, prefersReducedMotion } from "@/lib/animations/gsap";
 import { ANIMATION_CONFIG } from "@/lib/animations/animationConfig";
+import { experiences } from "@/data/experience";
+import { leadership } from "@/data/leadership";
+import { education } from "@/data/education";
 
 export default function ExperienceSection() {
   const sectionRef = useRef<HTMLElement | null>(null);
@@ -12,31 +15,17 @@ export default function ExperienceSection() {
   const runnerDotRef = useRef<HTMLDivElement | null>(null);
   const itemsRef = useRef<(HTMLDivElement | null)[]>([]);
 
-  const experiences = [
-    {
-      period: "Present",
-      role: "B.Tech in Artificial Intelligence",
-      organization: "Undergraduate Degree Program",
-      location: "India",
-      type: "Academic Foundation",
-      points: [
-        "In-depth focus on Machine Learning, Deep Learning, Computer Vision, and Natural Language Processing.",
-        "Rigorous coursework in Data Structures, Algorithms, Probability, Linear Algebra, and Software Architecture.",
-        "Hands-on laboratory research developing neural network models and real-time vision algorithms.",
-      ],
-    },
-    {
-      period: "Active",
-      role: "AI/ML & Full-Stack Developer",
-      organization: "Independent R&D & Engineering Projects",
-      location: "Remote",
-      type: "Technical Development",
-      points: [
-        "Architecting full-stack web applications with Next.js, TypeScript, and modern Python-based inference APIs.",
-        "Building end-to-end computer vision experiments, data ingestion pipelines, and model evaluation suites.",
-        "Applying clean software engineering practices, Git workflows, and modular codebase patterns.",
-      ],
-    },
+  const timeline = [
+    ...education.map((item) => ({
+      period: item.status,
+      role: `${item.degree} in ${item.specialization}`,
+      organization: item.institution,
+      location: item.campus,
+      type: "Education",
+      points: ["Current academic status: undergraduate student."],
+    })),
+    ...experiences,
+    ...leadership,
   ];
 
   useEffect(() => {
@@ -175,9 +164,9 @@ export default function ExperienceSection() {
         <SectionHeading
           index="04"
           eyebrow="Chronology & Milestones"
-          title="Education & Technical"
-          highlight="Experience."
-          description="A chronological timeline highlighting formal academic training in Artificial Intelligence and hands-on software development."
+          title="Education, experience &"
+          highlight="leadership."
+          description="My current Artificial Intelligence studies, AI/ML virtual internship work, and student leadership in the Robotics Club."
         />
 
         <div className="relative ml-4 sm:ml-8 pl-6 sm:pl-12 space-y-14">
@@ -202,7 +191,7 @@ export default function ExperienceSection() {
             />
           </div>
 
-          {experiences.map((exp, idx) => (
+          {timeline.map((exp, idx) => (
             <div
               key={idx}
               ref={(el) => {

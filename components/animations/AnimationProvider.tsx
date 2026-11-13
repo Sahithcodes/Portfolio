@@ -54,6 +54,9 @@ export function AnimationProvider({ children }: { children: React.ReactNode }) {
         state.scrollY = self.scroll();
         const sections = MOTION_CONFIG.sectionIds;
         const marker = window.innerHeight * 0.45;
+        const focusStudio = document.querySelector<HTMLElement>(".focus-studio");
+        const focusRect = focusStudio?.getBoundingClientRect();
+        const focusOwnsParticleMorph = Boolean(focusRect && focusRect.top <= marker && focusRect.bottom > marker);
         const active = sections.map((id) => document.getElementById(id)).filter((el): el is HTMLElement => !!el)
           .find((el) => { const r = el.getBoundingClientRect(); return r.top <= marker && r.bottom > marker; });
         if (active) {
@@ -66,9 +69,11 @@ export function AnimationProvider({ children }: { children: React.ReactNode }) {
           const stageBefore = index > 0
             ? MOTION_CONFIG.particleStageBySection[sections[index - 1]] ?? stageHere
             : stageHere;
-          state.particleMorph = index === 0
-            ? stageHere
-            : stageBefore + (stageHere - stageBefore) * sectionProgress;
+          if (!focusOwnsParticleMorph) {
+            state.particleMorph = index === 0
+              ? stageHere
+              : stageBefore + (stageHere - stageBefore) * sectionProgress;
+          }
           state.cameraProgress = state.progress;
           const from = opacityStops[index] ?? 0.2;
           const to = opacityStops[index + 1] ?? from;

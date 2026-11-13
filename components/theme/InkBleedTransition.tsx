@@ -32,7 +32,7 @@ export interface InkBleedTransitionRef {
 
 const FADE_OUT = 0.15;
 const RESIZE_DEBOUNCE_MS = 250;
-const CSS_FADE_S = 0.45;
+const CSS_FADE_S = 0.18;
 const REVEAL_DURATION = 0.42;
 
 /**
@@ -407,13 +407,6 @@ export const InkBleedTransition = forwardRef<InkBleedTransitionRef, {}>(
       window.addEventListener("resize", handleResize, { passive: true });
       window.addEventListener("scroll", handleScroll, { passive: true });
 
-      // Pre-capture once fonts are loaded and page is idle
-      if (document.fonts?.ready) {
-        document.fonts.ready.then(() => scheduleCapture(600));
-      } else {
-        scheduleCapture(800);
-      }
-
       return () => {
         window.removeEventListener("resize", handleResize);
         window.removeEventListener("scroll", handleScroll);
@@ -452,7 +445,9 @@ export const InkBleedTransition = forwardRef<InkBleedTransitionRef, {}>(
             cssFadeTimerRef.current = window.setTimeout(() => {
               root.classList.remove("theme-fade");
               onComplete();
-              if (renderer && !reducedMotion) scheduleCapture(0);
+              // Avoid full-page html2canvas work during initial page load.
+              // Warm cached ink frames only after a user requests a theme change.
+              if (renderer && !reducedMotion) scheduleCapture(2500);
             }, CSS_FADE_S * 1000 + 50);
           };
 
@@ -662,22 +657,14 @@ export const InkBleedTransition = forwardRef<InkBleedTransitionRef, {}>(
             return;
           }
 
-          // Keep the live page stable while first-use snapshots are prepared. A
-          // transient capture delay must not silently downgrade a supported WebGL
-          // transition into a plain CSS color fade.
-          if (pendingTransitionRef.current) return;
-          const pending: PendingTransition = {
-            fromTheme,
-            toTheme,
-            start: startAnimation,
-            timer: window.setTimeout(() => {
-              if (pendingTransitionRef.current !== pending) return;
-              pendingTransitionRef.current = null;
-              fallback();
-            }, 3500),
-          };
-          pendingTransitionRef.current = pending;
-          scheduleCapture(0);
+          // Do not make a click wait on full-document html2canvas captures.
+          // The snapshots are refreshed during idle time; while they're stale
+          // (commonly after scrolling), switch immediately with the light fade.
+          if (pendingTransitionRef.current) {
+            window.clearTimeout(pendingTransitionRef.current.timer);
+            pendingTransitionRef.current = null;
+          }
+          fallback();
         },
       }),
       [cancel, draw, getCurrentFrame, scheduleCapture]

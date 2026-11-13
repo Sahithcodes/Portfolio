@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { gsap, ScrollTrigger, prefersReducedMotion } from "@/lib/animations/gsap";
 import { ANIMATION_CONFIG } from "@/lib/animations/animationConfig";
@@ -14,6 +14,19 @@ interface SectionHeadingProps {
   align?: "left" | "center";
   className?: string;
   animate?: boolean;
+}
+
+const DECODE_ALPHABET = "01/\\<>+=-";
+const DECODE_FRAMES = 8;
+
+function getDecodedText(value: string, frame: number): string {
+  if (frame >= DECODE_FRAMES) return value;
+  const chars = Array.from(value);
+  const resolved = Math.floor((frame / DECODE_FRAMES) * chars.length);
+  return chars.map((char, index) => {
+    if (char === " " || index < resolved) return char;
+    return DECODE_ALPHABET[(index * 7 + frame * 3) % DECODE_ALPHABET.length];
+  }).join("");
 }
 
 export default function SectionHeading({
@@ -31,6 +44,7 @@ export default function SectionHeading({
   const headingMaskRef = useRef<HTMLSpanElement | null>(null);
   const descRef = useRef<HTMLParagraphElement | null>(null);
   const decodeTimer = useRef<number | null>(null);
+  const [decodeFrame, setDecodeFrame] = useState(DECODE_FRAMES);
 
   const isCenter = align === "center";
 
@@ -91,29 +105,19 @@ export default function SectionHeading({
       }
     }, containerRef);
 
-    const heading = headingMaskRef.current;
-    const originalMarkup = heading?.innerHTML;
-    const originalText = heading?.textContent || "";
-    const decodeTrigger = heading ? ScrollTrigger.create({
+    const decodeTrigger = headingMaskRef.current ? ScrollTrigger.create({
       trigger: containerRef.current,
       start: "top 85%",
       once: true,
       onEnter: () => {
-        if (!heading || !originalMarkup) return;
         let frame = 0;
-        const alphabet = "01/\\<>+=-";
+        setDecodeFrame(0);
         decodeTimer.current = window.setInterval(() => {
           frame += 1;
-          const resolved = Math.floor((frame / 8) * originalText.length);
-          heading.textContent = Array.from(originalText, (char, index) => {
-            if (char === " ") return " ";
-            if (index < resolved || frame >= 8) return char;
-            return alphabet[(index * 7 + frame * 3) % alphabet.length];
-          }).join("");
-          if (frame >= 8) {
+          setDecodeFrame(frame);
+          if (frame >= DECODE_FRAMES) {
             if (decodeTimer.current) window.clearInterval(decodeTimer.current);
             decodeTimer.current = null;
-            heading.innerHTML = originalMarkup;
           }
         }, 28);
       },
@@ -122,7 +126,7 @@ export default function SectionHeading({
     return () => {
       if (decodeTimer.current) {
         window.clearInterval(decodeTimer.current);
-        if (heading && originalMarkup) heading.innerHTML = originalMarkup;
+        decodeTimer.current = null;
       }
       decodeTrigger?.kill();
       ctx.revert();
@@ -156,8 +160,8 @@ export default function SectionHeading({
       {/* Masked Heading Wipe */}
       <h2 aria-label={`${title}${highlight ? ` ${highlight}` : ""}`} className="font-heading text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-content-primary leading-[1.1] overflow-hidden py-0.5">
         <span ref={headingMaskRef} className="block">
-          {title}{" "}
-          {highlight && <span className="text-content-primary">{highlight}</span>}
+          {getDecodedText(title, decodeFrame)}{" "}
+          {highlight && <span className="text-content-primary">{getDecodedText(highlight, decodeFrame)}</span>}
         </span>
       </h2>
 
